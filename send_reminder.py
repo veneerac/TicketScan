@@ -57,12 +57,17 @@ def send_failure_alert(error_text: str) -> None:
 
 def main() -> int:
     try:
+        target_date = tomorrow_local()
+
+        if config.SKIP_WEEKENDS and target_date.weekday() >= 5:  # 5=Saturday, 6=Sunday
+            print(f"{target_date.isoformat()} is a weekend — no scan duty, skipping.")
+            return 0
+
         sheets = google_sheets.get_service(
             config.GOOGLE_OAUTH_CLIENT_ID,
             config.GOOGLE_OAUTH_CLIENT_SECRET,
             config.GOOGLE_OAUTH_REFRESH_TOKEN,
         )
-        target_date = tomorrow_local()
         roster_tab = config.SCAN_ROSTER_TAB_OVERRIDE or str(target_date.year)
         leave_tab = config.LEAVE_TAB_OVERRIDE or f"{config.LEAVE_TAB_PREFIX}{target_date.year}"
 

@@ -75,3 +75,7 @@ BACKUP_COOLDOWN_DAYS = int(os.environ.get("BACKUP_COOLDOWN_DAYS", "7"))
 # sends the email only to LEAD_ALERT_EMAIL (not the real person), and skips
 # writing to the Log tab or the roster grid — so nothing real gets touched.
 TEST_MODE = os.environ.get("TEST_MODE", "false").strip().lower() == "true"
+
+# Nobody's scheduled to scan on weekends (roster cells are blank Sat/Sun),
+# so treat that as a normal no-op rather than an error worth alerting on.
+SKIP_WEEKENDS = os.environ.get("SKIP_WEEKENDS", "true").strip().lower() == "true"

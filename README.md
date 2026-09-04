@@ -35,6 +35,10 @@ Each spreadsheet has its own ID in [config.py](config.py) — see
 
 ## How it decides who gets the email
 
+0. **If tomorrow is a Saturday or Sunday, skip entirely** — nobody's
+   scheduled to scan on weekends, so this is a normal no-op (no email, no
+   Log write, no failure alert), not an error. Controlled by
+   `SKIP_WEEKENDS` (default `true`).
 1. Look up tomorrow's date in the Issues Scan Rotation sheet's roster-grid
    tab for that year → gives the scheduled person.
 2. Cross-check the **Leave** sheet for that person. This matters because

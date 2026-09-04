@@ -40,6 +40,7 @@ jobs:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           LEAD_ALERT_EMAIL: ${{ secrets.LEAD_ALERT_EMAIL }}
           TEST_MODE: ${{ github.event.inputs.test_mode || 'false' }}
+          SKIP_WEEKENDS: "true"
           TIMEZONE: "Asia/Colombo"
           SCAN_TIME_LOCAL: "09:00"
           # Tune these to match your real sheets — see README "Required Google Sheet structure".
