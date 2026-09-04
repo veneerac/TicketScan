@@ -3,7 +3,8 @@
 Sends each team member a reminder email 24 hours before their morning
 dashboard issue-scan duty. If the scheduled person is on leave, it
 automatically reassigns to an available teammate (never repeating the same
-backup within a cooldown window) and CCs the team lead so it's visible.
+backup within a cooldown window), CCs the team lead so it's visible, and
+updates the roster grid itself so it always shows who's actually doing it.
 
 Runs daily via GitHub Actions — no server to maintain, no laptop that needs
 to stay on.
@@ -44,9 +45,16 @@ Each spreadsheet has its own ID in [config.py](config.py) — see
    leave or was used as a replacement within the last `BACKUP_COOLDOWN_DAYS`
    days (so it doesn't always fall on the same person).
 4. Send the reminder, and log the decision to the **Log** tab.
-5. If a reminder for that date was already logged (e.g. triggered twice),
+5. **If it was a reassignment, update the roster grid itself**: clear
+   `"Scan"` from the on-leave person's cell for that date, and write it
+   into the replacement's cell instead — so the roster always shows who's
+   actually doing it, not just the original plan. (This write-back is
+   best-effort: if it fails for some reason, the email still sent and the
+   Log tab still has the correct record — only the grid's cosmetic update
+   is skipped, logged as a warning rather than failing the whole run.)
+6. If a reminder for that date was already logged (e.g. triggered twice),
    it skips — no duplicate emails.
-6. If anything fails (bad data, nobody scheduled, everyone on leave, API
+7. If anything fails (bad data, nobody scheduled, everyone on leave, API
    error), it emails `LEAD_ALERT_EMAIL` immediately instead of failing
    silently.
 

@@ -10,6 +10,7 @@ class Assignment:
     email: str
     is_replacement: bool
     reason: str
+    primary_name: str  # who the roster originally scheduled, even if reassigned
 
 
 class NoOneAvailableError(Exception):
@@ -174,6 +175,7 @@ def resolve_assignment(
             email=resolve_email(primary_name, email_domain),
             is_replacement=False,
             reason="scheduled on the roster",
+            primary_name=primary_name,
         )
 
     replacement_name = pick_replacement(
@@ -184,4 +186,51 @@ def resolve_assignment(
         email=resolve_email(replacement_name, email_domain),
         is_replacement=True,
         reason=f"{primary_name} is on leave",
+        primary_name=primary_name,
     )
+
+
+# --- Roster write-back ---------------------------------------------------
+# When a replacement is picked, move the duty marker in the actual sheet
+# from the on-leave person's cell to the replacement's cell, so the roster
+# always reflects who's really doing it, not just the original plan.
+
+
+def _column_letter(index: int) -> str:
+    n = index + 1  # convert 0-based to 1-based
+    letters = ""
+    while n > 0:
+        n, remainder = divmod(n - 1, 26)
+        letters = chr(65 + remainder) + letters
+    return letters
+
+
+def find_cell_ref(
+    grid_rows: list[list[str]],
+    target_date: datetime.date,
+    person_name: str,
+    date_column_index: int = 1,
+    date_format: str | None = None,
+) -> str | None:
+    """Returns the A1 cell reference (e.g. "E244") for person_name's column
+    on target_date's row, or None if either can't be found."""
+    if not grid_rows:
+        return None
+    header = grid_rows[0]
+    col_index = next(
+        (i for i, name in enumerate(header) if name.strip().lower() == person_name.strip().lower()),
+        None,
+    )
+    if col_index is None:
+        return None
+
+    for sheet_row_number, row in enumerate(grid_rows[1:], start=2):
+        if len(row) <= date_column_index or not row[date_column_index].strip():
+            continue
+        try:
+            row_date = parse_date(row[date_column_index], date_format)
+        except ValueError:
+            continue
+        if row_date == target_date:
+            return f"{_column_letter(col_index)}{sheet_row_number}"
+    return None

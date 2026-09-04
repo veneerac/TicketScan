@@ -18,7 +18,7 @@ def tomorrow_local() -> datetime.date:
 def build_email(assignment: scan_logic.Assignment, target_date: datetime.date) -> tuple[str, str]:
     subject = f"Reminder: Issue scan duty tomorrow ({target_date.isoformat()})"
     note = (
-        f"(You're covering for {assignment.reason.split(' is on leave')[0]}, who is on leave.)"
+        f"(You're covering for {assignment.primary_name}, who is on leave.)"
         if assignment.is_replacement
         else ""
     )
@@ -101,6 +101,30 @@ def main() -> int:
             ],
         )
         print(f"Sent reminder to {assignment.name} <{assignment.email}> for {target_date}.")
+
+        if assignment.is_replacement:
+            try:
+                old_cell = scan_logic.find_cell_ref(
+                    roster_grid, target_date, assignment.primary_name,
+                    config.ROSTER_DATE_COLUMN_INDEX, config.DATE_FORMAT,
+                )
+                new_cell = scan_logic.find_cell_ref(
+                    roster_grid, target_date, assignment.name,
+                    config.ROSTER_DATE_COLUMN_INDEX, config.DATE_FORMAT,
+                )
+                if old_cell and new_cell:
+                    google_sheets.update_cell(sheets, config.SCAN_SPREADSHEET_ID, roster_tab, old_cell, "")
+                    google_sheets.update_cell(
+                        sheets, config.SCAN_SPREADSHEET_ID, roster_tab, new_cell, config.ROSTER_DUTY_KEYWORD
+                    )
+                    print(f"Updated roster: moved duty from {assignment.primary_name} to {assignment.name}.")
+                else:
+                    print("Could not locate roster cells to update — skipping write-back.", file=sys.stderr)
+            except Exception:
+                # Best-effort: the email already sent and the Log entry already
+                # recorded the real outcome, so don't fail the run over this.
+                traceback.print_exc()
+
         return 0
 
     except Exception:

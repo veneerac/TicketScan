@@ -55,6 +55,15 @@ def read_grid(service, spreadsheet_id: str, sheet_name: str) -> list[list[str]]:
     return result.get("values", [])
 
 
+def update_cell(service, spreadsheet_id: str, sheet_name: str, cell_ref: str, value: str) -> None:
+    service.spreadsheets().values().update(
+        spreadsheetId=spreadsheet_id,
+        range=f"{sheet_name}!{cell_ref}",
+        valueInputOption="USER_ENTERED",
+        body={"values": [[value]]},
+    ).execute()
+
+
 def append_row(service, spreadsheet_id: str, sheet_name: str, row: list) -> None:
     service.spreadsheets().values().append(
         spreadsheetId=spreadsheet_id,
