@@ -31,8 +31,17 @@ SCAN_ROSTER_TAB_OVERRIDE = os.environ.get("SCAN_ROSTER_TAB_OVERRIDE") or None
 # Leave sheet — owned by someone else, but shareable. Checked separately
 # from the roster because the roster is only updated weekly and can go
 # stale if someone takes leave after that week's roster was filled in.
+# Real structure: one tab per year ("Leave Plan 2026", ...), and each team
+# gets 3 columns (Lead LL/AL | Member LL | Member AL) under a merged
+# header matching LEAVE_TEAM_LABEL. Column A holds dates *without* a year
+# (e.g. "1-Jan") — LEAVE_DATE_FORMAT describes that, separate from the
+# full-date DATE_FORMAT used elsewhere.
 LEAVE_SPREADSHEET_ID = _require("LEAVE_SPREADSHEET_ID")
-LEAVE_TAB = os.environ.get("LEAVE_TAB", "Leave")
+LEAVE_TAB_OVERRIDE = os.environ.get("LEAVE_TAB_OVERRIDE") or None
+LEAVE_TAB_PREFIX = os.environ.get("LEAVE_TAB_PREFIX", "Leave Plan ")
+LEAVE_TEAM_LABEL = os.environ.get("LEAVE_TEAM_LABEL", "Castor (Team 2)")
+LEAVE_DATE_COLUMN_INDEX = int(os.environ.get("LEAVE_DATE_COLUMN_INDEX", "0"))  # 0-based; 0 = column A
+LEAVE_DATE_FORMAT = os.environ.get("LEAVE_DATE_FORMAT", "%d-%b")
 
 # Email is derived directly from the roster's column header, lowercased
 # plus this domain — e.g. "DinukaC" -> "dinukac@wso2.com". Only works if

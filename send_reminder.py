@@ -64,13 +64,18 @@ def main() -> int:
         )
         target_date = tomorrow_local()
         roster_tab = config.SCAN_ROSTER_TAB_OVERRIDE or str(target_date.year)
+        leave_tab = config.LEAVE_TAB_OVERRIDE or f"{config.LEAVE_TAB_PREFIX}{target_date.year}"
 
         roster_grid = google_sheets.read_grid(sheets, config.SCAN_SPREADSHEET_ID, roster_tab)
-        leave_rows = google_sheets.read_rows(sheets, config.LEAVE_SPREADSHEET_ID, config.LEAVE_TAB)
+        leave_grid = google_sheets.read_grid(sheets, config.LEAVE_SPREADSHEET_ID, leave_tab)
         log_rows = google_sheets.read_rows(sheets, config.SCAN_SPREADSHEET_ID, config.LOG_TAB)
 
         roster_schedule = scan_logic.parse_roster_grid(
             roster_grid, config.ROSTER_DATE_COLUMN_INDEX, config.DATE_FORMAT
+        )
+        leave_schedule = scan_logic.parse_leave_grid(
+            leave_grid, config.LEAVE_TEAM_LABEL, target_date.year,
+            config.LEAVE_DATE_COLUMN_INDEX, config.LEAVE_DATE_FORMAT,
         )
 
         if config.TEST_MODE:
@@ -80,7 +85,7 @@ def main() -> int:
             return 0
 
         assignment = scan_logic.resolve_assignment(
-            target_date, roster_schedule, leave_rows, log_rows,
+            target_date, roster_schedule, leave_schedule, log_rows,
             config.BACKUP_COOLDOWN_DAYS, config.ROSTER_DUTY_KEYWORD,
             config.EMAIL_DOMAIN, config.DATE_FORMAT,
         )

@@ -47,4 +47,6 @@ jobs:
           ROSTER_DUTY_KEYWORD: "Scan"
           EMAIL_DOMAIN: "@wso2.com"
           DATE_FORMAT: "%m/%d/%Y"
-          LEAVE_TAB: "Castor (Team 2)"
+          LEAVE_TEAM_LABEL: "Castor (Team 2)"
+          LEAVE_TAB_PREFIX: "Leave Plan "
+          LEAVE_DATE_FORMAT: "%d-%b"

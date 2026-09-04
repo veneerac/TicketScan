@@ -93,16 +93,32 @@ header row; the script appends to it):
 | DateSent | ForDate | AssignedName | AssignedEmail | WasReplacement | Reason |
 |---|---|---|---|---|---|
 
-**Leave sheet** — still needs confirming (the "Castor (Team 2)" sheet with
-`Member AL` / `Member LL` / `Lead LL/AL` columns you described). One row
-per leave period is the current guess:
-| Name | StartDate | EndDate |
-|---|---|---|
-| PersonB | 9/5/2026 | 9/6/2026 |
+**Leave sheet** — confirmed from real screenshots of "Integration ABT
+Leave Plan". Also one tab per year (`Leave Plan 2026`, `Leave Plan 2025`,
+...), but shaped differently from Roster: column A holds dates *without a
+year* (`19-Jan`, `20-Jan`, ...), and every team shares this one sheet —
+each gets 3 columns under a merged header with the team's name, e.g.:
 
-If it's actually a grid like Roster (one row per date, names typed into
-whichever leave-type column applies), that needs a different reader — send
-a screenshot the same way you did for Roster and I'll match it exactly.
+| Date | ... | Castor (Team 2) | | | ... |
+|---|---|---|---|---|---|
+| | | Lead LL/AL | Member LL | Member AL | |
+| 19-Jan | | | Kavindu | ChandimaV | |
+| 20-Jan | | | Kavindu | ChandimaV | |
+
+Whoever's on leave has their name typed into whichever of those 3 columns
+matches their role/leave-type — any name in any of the 3 columns counts as
+"on leave" that day, regardless of which specific column. `LEAVE_TEAM_LABEL`
+(default `"Castor (Team 2)"`) is the exact header text the script looks
+for to find your team's 3 columns; `LEAVE_DATE_FORMAT` (default `"%d-%b"`)
+matches the year-less date format — the missing year comes from the tab
+name itself (`Leave Plan 2026` → 2026).
+
+**Name matching is fuzzy on purpose**: the Leave sheet often uses first
+names only (e.g. `Kavindu`), while Roster uses first-name+initial (e.g.
+`KavinduN`) — matching allows either to be a prefix of the other, so this
+bridges automatically. If any name is ambiguous under this rule (two Roster
+people share the same first-name prefix), that needs a closer look rather
+than relying on this fallback.
 
 **`DATE_FORMAT` is set to `%m/%d/%Y`** in [config.py](config.py) / the
 workflow, matching the confirmed `9/4/2026`-style dates in your real

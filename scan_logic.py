@@ -72,22 +72,63 @@ def find_primary(
 
 
 # --- Leave sheet (separate, more up-to-date than the weekly roster) -----
+# Real structure (confirmed from screenshots of "Integration ABT Leave
+# Plan"): one tab per year ("Leave Plan 2026", ...), column A = date
+# *without a year* (e.g. "1-Jan"), and each team gets 3 columns under a
+# merged header matching the team's name (e.g. "Castor (Team 2)"):
+# Lead LL/AL | Member LL | Member AL. Whoever's on leave has their name
+# typed into whichever of those 3 columns matches their role/leave-type —
+# row 1 = team headers, row 2 = the 3 sub-headers, data starts row 3.
+
+
+def parse_leave_grid(
+    grid_rows: list[list[str]],
+    team_label: str,
+    year: int,
+    date_column_index: int = 0,
+    leave_date_format: str = "%d-%b",
+) -> dict[datetime.date, list[str]]:
+    """Returns {date: [names on leave that day for this team]}."""
+    if len(grid_rows) < 3:
+        return {}
+    header_row = grid_rows[0]
+    start_col = next(
+        (i for i, v in enumerate(header_row) if v.strip() == team_label), None
+    )
+    if start_col is None:
+        raise ValueError(f"Team {team_label!r} not found in the Leave sheet's header row")
+    leave_cols = [start_col, start_col + 1, start_col + 2]
+
+    schedule: dict[datetime.date, list[str]] = {}
+    for row in grid_rows[2:]:
+        if date_column_index >= len(row) or not row[date_column_index].strip():
+            continue
+        raw_date = row[date_column_index].strip()
+        try:
+            row_date = datetime.datetime.strptime(
+                f"{raw_date}-{year}", f"{leave_date_format}-%Y"
+            ).date()
+        except ValueError:
+            continue
+        names = [row[c].strip() for c in leave_cols if c < len(row) and row[c].strip()]
+        schedule[row_date] = names
+    return schedule
+
+
+def _names_match(a: str, b: str) -> bool:
+    """Case-insensitive match, allowing one name to be a short-form prefix
+    of the other — the Leave sheet often uses first names only (e.g.
+    "Kavindu"), while the Roster uses first-name+initial (e.g. "KavinduN")."""
+    a, b = a.strip().lower(), b.strip().lower()
+    return bool(a) and bool(b) and (a == b or a.startswith(b) or b.startswith(a))
 
 
 def is_on_leave(
     name: str,
     target_date: datetime.date,
-    leave_rows: list[dict],
-    date_format: str | None = None,
+    leave_schedule: dict[datetime.date, list[str]],
 ) -> bool:
-    for row in leave_rows:
-        if row.get("Name", "").strip().lower() != name.strip().lower():
-            continue
-        start = parse_date(row["StartDate"], date_format)
-        end = parse_date(row["EndDate"], date_format)
-        if start <= target_date <= end:
-            return True
-    return False
+    return any(_names_match(name, n) for n in leave_schedule.get(target_date, []))
 
 
 # --- Assignment resolution ----------------------------------------------
@@ -128,7 +169,7 @@ def pick_replacement(
     target_date: datetime.date,
     primary_name: str,
     roster_schedule: dict[datetime.date, dict[str, str]],
-    leave_rows: list[dict],
+    leave_schedule: dict[datetime.date, list[str]],
     log_rows: list[dict],
     cooldown_days: int,
     date_format: str | None = None,
@@ -141,7 +182,7 @@ def pick_replacement(
         name
         for name in team_names
         if name.strip().lower() != primary_name.strip().lower()
-        and not is_on_leave(name, target_date, leave_rows, date_format)
+        and not is_on_leave(name, target_date, leave_schedule)
     ]
     if not candidates:
         raise NoOneAvailableError(f"Everyone is on leave for {target_date.isoformat()}")
@@ -158,7 +199,7 @@ def pick_replacement(
 def resolve_assignment(
     target_date: datetime.date,
     roster_schedule: dict[datetime.date, dict[str, str]],
-    leave_rows: list[dict],
+    leave_schedule: dict[datetime.date, list[str]],
     log_rows: list[dict],
     cooldown_days: int,
     duty_keyword: str,
@@ -169,7 +210,7 @@ def resolve_assignment(
 
     # The roster is filled in by hand ahead of time, so it can go stale —
     # cross-check against the live Leave sheet even for the scheduled person.
-    if not is_on_leave(primary_name, target_date, leave_rows, date_format):
+    if not is_on_leave(primary_name, target_date, leave_schedule):
         return Assignment(
             name=primary_name,
             email=resolve_email(primary_name, email_domain),
@@ -179,7 +220,7 @@ def resolve_assignment(
         )
 
     replacement_name = pick_replacement(
-        target_date, primary_name, roster_schedule, leave_rows, log_rows, cooldown_days, date_format
+        target_date, primary_name, roster_schedule, leave_schedule, log_rows, cooldown_days, date_format
     )
     return Assignment(
         name=replacement_name,
