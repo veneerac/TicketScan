@@ -1,0 +1,115 @@
+import datetime
+import sys
+import traceback
+
+from zoneinfo import ZoneInfo
+
+import config
+import google_sheets
+import gmail_mail
+import scan_logic
+
+
+def tomorrow_local() -> datetime.date:
+    now_local = datetime.datetime.now(ZoneInfo(config.TIMEZONE))
+    return (now_local + datetime.timedelta(days=1)).date()
+
+
+def build_email(assignment: scan_logic.Assignment, target_date: datetime.date) -> tuple[str, str]:
+    subject = f"Reminder: Issue scan duty tomorrow ({target_date.isoformat()})"
+    note = (
+        f"(You're covering for {assignment.reason.split(' is on leave')[0]}, who is on leave.)"
+        if assignment.is_replacement
+        else ""
+    )
+    body = f"""
+    <p>Hi {assignment.name},</p>
+    <p>This is a reminder that <b>you're on morning issue-scan duty tomorrow,
+    {target_date.strftime('%A, %d %B %Y')}</b> at {config.SCAN_TIME_LOCAL}
+    ({config.TIMEZONE}).</p>
+    <p>Please run the dashboard scan as usual. {note}</p>
+    <p>Thanks!</p>
+    """
+    return subject, body
+
+
+def send_failure_alert(error_text: str) -> None:
+    try:
+        gmail_mail.send_mail(
+            sender_address=config.GMAIL_SENDER_ADDRESS,
+            app_password=config.GMAIL_APP_PASSWORD,
+            to_addresses=[config.LEAD_ALERT_EMAIL],
+            subject="[ACTION NEEDED] Scan reminder automation failed",
+            body_html=f"<p>The daily scan-reminder job failed:</p><pre>{error_text}</pre>"
+            f"<p>No reminder may have been sent for tomorrow's scan — please check "
+            f"and assign someone manually if needed.</p>",
+        )
+    except Exception:
+        # Best-effort only — don't let a failed alert mask the original error.
+        traceback.print_exc()
+
+
+def main() -> int:
+    try:
+        sheets = google_sheets.get_service(
+            config.GOOGLE_OAUTH_CLIENT_ID,
+            config.GOOGLE_OAUTH_CLIENT_SECRET,
+            config.GOOGLE_OAUTH_REFRESH_TOKEN,
+        )
+        target_date = tomorrow_local()
+        roster_tab = config.SCAN_ROSTER_TAB_OVERRIDE or str(target_date.year)
+
+        team_rows = google_sheets.read_rows(sheets, config.SCAN_SPREADSHEET_ID, config.SCAN_TEAM_TAB)
+        roster_grid = google_sheets.read_grid(sheets, config.SCAN_SPREADSHEET_ID, roster_tab)
+        leave_rows = google_sheets.read_rows(sheets, config.LEAVE_SPREADSHEET_ID, config.LEAVE_TAB)
+        log_rows = google_sheets.read_rows(sheets, config.SCAN_SPREADSHEET_ID, config.LOG_TAB)
+
+        roster_schedule = scan_logic.parse_roster_grid(
+            roster_grid, config.ROSTER_DATE_COLUMN_INDEX, config.DATE_FORMAT
+        )
+
+        if scan_logic.already_sent(log_rows, target_date, config.DATE_FORMAT):
+            print(f"Reminder for {target_date.isoformat()} already sent — skipping.")
+            return 0
+
+        assignment = scan_logic.resolve_assignment(
+            target_date, team_rows, roster_schedule, leave_rows, log_rows,
+            config.BACKUP_COOLDOWN_DAYS, config.ROSTER_DUTY_KEYWORD,
+            config.EMAIL_DOMAIN, config.DATE_FORMAT,
+        )
+
+        subject, body = build_email(assignment, target_date)
+        gmail_mail.send_mail(
+            sender_address=config.GMAIL_SENDER_ADDRESS,
+            app_password=config.GMAIL_APP_PASSWORD,
+            to_addresses=[assignment.email],
+            cc_addresses=[config.LEAD_ALERT_EMAIL] if assignment.is_replacement else None,
+            subject=subject,
+            body_html=body,
+        )
+
+        google_sheets.append_row(
+            sheets,
+            config.SCAN_SPREADSHEET_ID,
+            config.LOG_TAB,
+            [
+                datetime.date.today().isoformat(),
+                target_date.isoformat(),
+                assignment.name,
+                assignment.email,
+                "TRUE" if assignment.is_replacement else "FALSE",
+                assignment.reason,
+            ],
+        )
+        print(f"Sent reminder to {assignment.name} <{assignment.email}> for {target_date}.")
+        return 0
+
+    except Exception:
+        error_text = traceback.format_exc()
+        print(error_text, file=sys.stderr)
+        send_failure_alert(error_text)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
