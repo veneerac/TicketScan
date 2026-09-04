@@ -1,11 +1,14 @@
 name: Daily Scan Reminder
 
 on:
-  schedule:
-    # 03:30 UTC = 09:00 Asia/Colombo (UTC+5:30, no DST).
-    # If SCAN_TIME_LOCAL in repo variables/secrets changes, update this line to match
-    # (24h before the new scan time, converted to UTC).
-    - cron: "30 3 * * *"
+  # Automatic daily schedule is paused during setup/testing — only manual
+  # "Run workflow" triggers fire for now. Uncomment the schedule block below
+  # (and remove this comment) when ready to go live.
+  # schedule:
+  #   # 03:30 UTC = 09:00 Asia/Colombo (UTC+5:30, no DST).
+  #   # If SCAN_TIME_LOCAL in repo variables/secrets changes, update this line to match
+  #   # (24h before the new scan time, converted to UTC).
+  #   - cron: "30 3 * * *"
   workflow_dispatch: {}
 
 jobs:
