@@ -180,12 +180,24 @@ fires at 03:30 UTC (24h before). If your scan time is different, update
 both the `cron` line and the `SCAN_TIME_LOCAL` value in
 `.github/workflows/daily-reminder.yml`.
 
-### 5. Test it
+### 5. Test it safely
 
-- `Actions` tab → `Daily Scan Reminder` → `Run workflow` to trigger it
-  manually anytime, without waiting for the schedule.
-- To test locally: `pip install -r requirements.txt`, export the same
-  env vars the workflow uses, then `python send_reminder.py`.
+`Actions` tab → `Daily Scan Reminder` → `Run workflow` opens a small form
+with a **Test mode** checkbox — **checked by default**, so a manual run is
+safe unless you explicitly uncheck it:
+
+- **Test mode ON** (default): still reads your real sheets and resolves a
+  real assignment (so you're testing the actual logic), but sends the
+  preview only to `LEAD_ALERT_EMAIL` — never the real person — and skips
+  writing to the Log tab or the roster grid entirely. Nothing real gets
+  touched; run it as many times as you want.
+- **Test mode OFF**: full real run — real person gets emailed, Log gets a
+  row, roster gets updated on a reassignment. Only uncheck this once
+  you've verified a test-mode run looks right.
+
+To test locally instead: `pip install -r requirements.txt`, export the
+same env vars the workflow uses (including `TEST_MODE=true`), then
+`python send_reminder.py`.
 
 ## Reliability notes
 

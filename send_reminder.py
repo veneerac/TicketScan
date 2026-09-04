@@ -67,7 +67,9 @@ def main() -> int:
             roster_grid, config.ROSTER_DATE_COLUMN_INDEX, config.DATE_FORMAT
         )
 
-        if scan_logic.already_sent(log_rows, target_date, config.DATE_FORMAT):
+        if config.TEST_MODE:
+            print("=== TEST_MODE is ON: no real email, no Log write, no roster write-back ===")
+        elif scan_logic.already_sent(log_rows, target_date, config.DATE_FORMAT):
             print(f"Reminder for {target_date.isoformat()} already sent — skipping.")
             return 0
 
@@ -78,6 +80,23 @@ def main() -> int:
         )
 
         subject, body = build_email(assignment, target_date)
+
+        if config.TEST_MODE:
+            gmail_mail.send_mail(
+                sender_address=config.GMAIL_SENDER_ADDRESS,
+                app_password=config.GMAIL_APP_PASSWORD,
+                to_addresses=[config.LEAD_ALERT_EMAIL],
+                cc_addresses=None,
+                subject=f"[TEST MODE] {subject}",
+                body_html=f"<p><b>Real recipient would have been: {assignment.name} "
+                f"&lt;{assignment.email}&gt;</b></p><hr>{body}",
+            )
+            print(
+                f"[TEST MODE] Would have assigned {assignment.name} <{assignment.email}> "
+                f"for {target_date} ({assignment.reason}). Sent preview to {config.LEAD_ALERT_EMAIL} instead."
+            )
+            return 0
+
         gmail_mail.send_mail(
             sender_address=config.GMAIL_SENDER_ADDRESS,
             app_password=config.GMAIL_APP_PASSWORD,

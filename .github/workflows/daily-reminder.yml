@@ -9,7 +9,12 @@ on:
   #   # If SCAN_TIME_LOCAL in repo variables/secrets changes, update this line to match
   #   # (24h before the new scan time, converted to UTC).
   #   - cron: "30 3 * * *"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      test_mode:
+        description: "Test mode: send preview only to LEAD_ALERT_EMAIL, skip Log/roster writes"
+        type: boolean
+        default: true
 
 jobs:
   send-reminder:
@@ -34,6 +39,7 @@ jobs:
           GMAIL_SENDER_ADDRESS: ${{ secrets.GMAIL_SENDER_ADDRESS }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           LEAD_ALERT_EMAIL: ${{ secrets.LEAD_ALERT_EMAIL }}
+          TEST_MODE: ${{ github.event.inputs.test_mode || 'false' }}
           TIMEZONE: "Asia/Colombo"
           SCAN_TIME_LOCAL: "09:00"
           # Tune these to match your real sheets — see README "Required Google Sheet structure".

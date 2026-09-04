@@ -61,3 +61,8 @@ SCAN_TIME_LOCAL = os.environ.get("SCAN_TIME_LOCAL", "09:00")
 # to be picked again as a leave-day replacement. Default 7 = won't repeat
 # as backup within the same week.
 BACKUP_COOLDOWN_DAYS = int(os.environ.get("BACKUP_COOLDOWN_DAYS", "7"))
+
+# When true: still reads real sheets and resolves a real assignment, but
+# sends the email only to LEAD_ALERT_EMAIL (not the real person), and skips
+# writing to the Log tab or the roster grid — so nothing real gets touched.
+TEST_MODE = os.environ.get("TEST_MODE", "false").strip().lower() == "true"
