@@ -24,12 +24,19 @@ def get_service(client_id: str, client_secret: str, refresh_token: str):
     return build("sheets", "v4", credentials=creds, cache_discovery=False)
 
 
+def _quote_sheet_name(sheet_name: str) -> str:
+    """A1 notation requires sheet names with spaces/special characters (e.g.
+    "Castor (Team 2)") to be wrapped in single quotes, with any internal
+    single quotes doubled."""
+    return "'" + sheet_name.replace("'", "''") + "'"
+
+
 def read_rows(service, spreadsheet_id: str, sheet_name: str) -> list[dict]:
     """Reads a sheet and returns rows as dicts keyed by the header row."""
     result = (
         service.spreadsheets()
         .values()
-        .get(spreadsheetId=spreadsheet_id, range=sheet_name)
+        .get(spreadsheetId=spreadsheet_id, range=_quote_sheet_name(sheet_name))
         .execute()
     )
     values = result.get("values", [])
@@ -49,7 +56,7 @@ def read_grid(service, spreadsheet_id: str, sheet_name: str) -> list[list[str]]:
     result = (
         service.spreadsheets()
         .values()
-        .get(spreadsheetId=spreadsheet_id, range=sheet_name)
+        .get(spreadsheetId=spreadsheet_id, range=_quote_sheet_name(sheet_name))
         .execute()
     )
     return result.get("values", [])
@@ -58,7 +65,7 @@ def read_grid(service, spreadsheet_id: str, sheet_name: str) -> list[list[str]]:
 def update_cell(service, spreadsheet_id: str, sheet_name: str, cell_ref: str, value: str) -> None:
     service.spreadsheets().values().update(
         spreadsheetId=spreadsheet_id,
-        range=f"{sheet_name}!{cell_ref}",
+        range=f"{_quote_sheet_name(sheet_name)}!{cell_ref}",
         valueInputOption="USER_ENTERED",
         body={"values": [[value]]},
     ).execute()
@@ -67,7 +74,7 @@ def update_cell(service, spreadsheet_id: str, sheet_name: str, cell_ref: str, va
 def append_row(service, spreadsheet_id: str, sheet_name: str, row: list) -> None:
     service.spreadsheets().values().append(
         spreadsheetId=spreadsheet_id,
-        range=sheet_name,
+        range=_quote_sheet_name(sheet_name),
         valueInputOption="USER_ENTERED",
         insertDataOption="INSERT_ROWS",
         body={"values": [row]},
