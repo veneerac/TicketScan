@@ -12,7 +12,7 @@ to stay on.
 
 | Sheet | What it's for | Access you already have |
 |---|---|---|
-| **Issues Scan Rotation sheet** | your team-owned sheet — has `Team`, `Log`, and one roster-grid tab per year (`2026`, `2025`, ...) | Editor |
+| **Issues Scan Rotation sheet** | your team-owned sheet — has `Log` and one roster-grid tab per year (`2026`, `2025`, ...) | Editor |
 | **Leave sheet** | someone else's leave plan | Viewer (read-only) |
 
 No new sharing is required for either — the automation authenticates as
@@ -39,10 +39,10 @@ Each spreadsheet has its own ID in [config.py](config.py) — see
 2. Cross-check the **Leave** sheet for that person. This matters because
    you fill in the roster grid by hand — if someone goes on leave after you
    filled it in, the Leave sheet catches what the roster missed.
-3. If there's a conflict, pick a replacement from the **Team** tab, skipping
-   anyone who is on leave or was used as a replacement within the last
-   `BACKUP_COOLDOWN_DAYS` days (so it doesn't always fall on the same
-   person).
+3. If there's a conflict, pick a replacement from the roster grid's own
+   column headers (anyone else on the team), skipping anyone who is on
+   leave or was used as a replacement within the last `BACKUP_COOLDOWN_DAYS`
+   days (so it doesn't always fall on the same person).
 4. Send the reminder, and log the decision to the **Log** tab.
 5. If a reminder for that date was already logged (e.g. triggered twice),
    it skips — no duplicate emails.
@@ -71,21 +71,14 @@ only if a tab is ever named differently than its plain year.
 `ROSTER_DUTY_KEYWORD` (default `"Scan"`) are both configurable if either
 ever changes.
 
-**Issues Scan Rotation sheet** — `Team` tab (new — the roster grid's column
-headers are short/abbreviated usernames, so this is where each person's
-real email lives):
-| Name | Email |
-|---|---|
-| PersonA | (their real email) |
-| PersonB | (their real email) |
-| PersonC | (their real email) |
-
-`Name` here must match the roster grid's column headers exactly — one row
-per person. `Email` is optional (falls back to `<Name>` + `EMAIL_DOMAIN`,
-but since roster headers aren't real mailbox names, filling this in is
-safer). No priority/ordering needed — if the scheduled person is on leave,
-any other available teammate is picked, the only rule being nobody repeats
-as backup within `BACKUP_COOLDOWN_DAYS` (default `7`, i.e. once a week).
+No separate Team tab — email is derived straight from each column header:
+lowercased, plus `EMAIL_DOMAIN` (default `@wso2.com`). So `DinukaC` →
+`dinukac@wso2.com`. This only works if that pattern matches real mailbox
+names for everyone; if any don't fit, that needs revisiting rather than
+guessing. If the scheduled person is on leave, any other available
+teammate from the same column headers is picked as backup — no
+priority/ordering, the only rule being nobody repeats as backup within
+`BACKUP_COOLDOWN_DAYS` (default `7`, i.e. once a week).
 
 **Issues Scan Rotation sheet** — `Log` tab (new, leave empty but for a
 header row; the script appends to it):

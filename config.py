@@ -16,12 +16,10 @@ GOOGLE_OAUTH_CLIENT_SECRET = _require("GOOGLE_OAUTH_CLIENT_SECRET")
 GOOGLE_OAUTH_REFRESH_TOKEN = _require("GOOGLE_OAUTH_REFRESH_TOKEN")
 
 # Issues Scan Rotation sheet — owned by the team, you/teammates can edit it.
-# Holds: Team (people/emails/backup order), one roster-grid tab per calendar
-# year (literally named "2026", "2025", ... — column A weekday, column B
-# date, one column per person, "Scan" marks who's on duty), and Log (the
-# script writes here).
+# Holds: one roster-grid tab per calendar year (literally named "2026",
+# "2025", ... — column A weekday, column B date, one column per person,
+# "Scan" marks who's on duty), and Log (the script writes here).
 SCAN_SPREADSHEET_ID = _require("SCAN_SPREADSHEET_ID")
-SCAN_TEAM_TAB = os.environ.get("SCAN_TEAM_TAB", "Team")
 LOG_TAB = os.environ.get("LOG_TAB", "Log")
 ROSTER_DATE_COLUMN_INDEX = int(os.environ.get("ROSTER_DATE_COLUMN_INDEX", "1"))  # 0-based; 1 = column B
 ROSTER_DUTY_KEYWORD = os.environ.get("ROSTER_DUTY_KEYWORD", "Scan")
@@ -36,10 +34,10 @@ SCAN_ROSTER_TAB_OVERRIDE = os.environ.get("SCAN_ROSTER_TAB_OVERRIDE") or None
 LEAVE_SPREADSHEET_ID = _require("LEAVE_SPREADSHEET_ID")
 LEAVE_TAB = os.environ.get("LEAVE_TAB", "Leave")
 
-# Fallback only: derives an email from the Roster tab's column header (a
-# short username) if the Team tab doesn't have an explicit Email for that
-# person. Roster headers are abbreviated, so they may not match real
-# mailbox names — filling in Team's Email column explicitly is the safer bet.
+# Email is derived directly from the roster's column header, lowercased
+# plus this domain — e.g. "DinukaC" -> "dinukac@wso2.com". Only works if
+# that pattern actually matches real mailbox names; if it doesn't for some
+# people, this needs revisiting (e.g. a lookup table) rather than guessing.
 EMAIL_DOMAIN = os.environ.get("EMAIL_DOMAIN", "@wso2.com")
 
 # Exact date format used across your sheets (Python strptime codes), e.g.

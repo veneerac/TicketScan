@@ -119,47 +119,43 @@ def already_sent(
     )
 
 
-def resolve_email(name: str, team_rows: list[dict], email_domain: str) -> str:
-    for row in team_rows:
-        if row.get("Name", "").strip().lower() == name.strip().lower():
-            explicit = row.get("Email", "").strip()
-            if explicit:
-                return explicit
-    return f"{name}{email_domain}"
+def resolve_email(name: str, email_domain: str) -> str:
+    return f"{name.strip().lower()}{email_domain}"
 
 
 def pick_replacement(
     target_date: datetime.date,
     primary_name: str,
-    team_rows: list[dict],
+    roster_schedule: dict[datetime.date, dict[str, str]],
     leave_rows: list[dict],
     log_rows: list[dict],
     cooldown_days: int,
     date_format: str | None = None,
-) -> dict:
-    # Any available (not on leave) teammate is fine — the only rule is no
-    # one repeats as backup within `cooldown_days` (default 7: once/week).
+) -> str:
+    # Anyone in the roster's column headers is a valid candidate — any
+    # available (not on leave) teammate is fine, the only rule is no one
+    # repeats as backup within `cooldown_days` (default 7: once/week).
+    team_names = list(roster_schedule.get(target_date, {}).keys())
     candidates = [
-        row
-        for row in team_rows
-        if row["Name"].strip().lower() != primary_name.strip().lower()
-        and not is_on_leave(row["Name"], target_date, leave_rows, date_format)
+        name
+        for name in team_names
+        if name.strip().lower() != primary_name.strip().lower()
+        and not is_on_leave(name, target_date, leave_rows, date_format)
     ]
     if not candidates:
         raise NoOneAvailableError(f"Everyone is on leave for {target_date.isoformat()}")
 
     recently_used = recent_backup_names(log_rows, target_date, cooldown_days, date_format)
 
-    for row in candidates:
-        if row["Name"].strip().lower() not in recently_used:
-            return row
+    for name in candidates:
+        if name.strip().lower() not in recently_used:
+            return name
     # Everyone eligible was used recently — fall back to the first one anyway.
     return candidates[0]
 
 
 def resolve_assignment(
     target_date: datetime.date,
-    team_rows: list[dict],
     roster_schedule: dict[datetime.date, dict[str, str]],
     leave_rows: list[dict],
     log_rows: list[dict],
@@ -175,17 +171,17 @@ def resolve_assignment(
     if not is_on_leave(primary_name, target_date, leave_rows, date_format):
         return Assignment(
             name=primary_name,
-            email=resolve_email(primary_name, team_rows, email_domain),
+            email=resolve_email(primary_name, email_domain),
             is_replacement=False,
             reason="scheduled on the roster",
         )
 
-    replacement = pick_replacement(
-        target_date, primary_name, team_rows, leave_rows, log_rows, cooldown_days, date_format
+    replacement_name = pick_replacement(
+        target_date, primary_name, roster_schedule, leave_rows, log_rows, cooldown_days, date_format
     )
     return Assignment(
-        name=replacement["Name"],
-        email=resolve_email(replacement["Name"], team_rows, email_domain),
+        name=replacement_name,
+        email=resolve_email(replacement_name, email_domain),
         is_replacement=True,
         reason=f"{primary_name} is on leave",
     )
