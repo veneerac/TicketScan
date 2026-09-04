@@ -215,6 +215,12 @@ safe unless you explicitly uncheck it:
   row, roster gets updated on a reassignment. Only uncheck this once
   you've verified a test-mode run looks right.
 
+The same form also has a **Target date** field (`YYYY-MM-DD`) — normally
+left blank (uses the real tomorrow), but useful to test against a specific
+weekday on demand rather than waiting for the calendar (e.g. weekends are
+always skipped, so testing on a Friday means "tomorrow" is a no-op unless
+you set this).
+
 To test locally instead: `pip install -r requirements.txt`, export the
 same env vars the workflow uses (including `TEST_MODE=true`), then
 `python send_reminder.py`.

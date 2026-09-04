@@ -15,6 +15,10 @@ on:
         description: "Test mode: send preview only to LEAD_ALERT_EMAIL, skip Log/roster writes"
         type: boolean
         default: true
+      target_date:
+        description: "Test a specific date (YYYY-MM-DD) instead of tomorrow — leave blank for normal behavior"
+        type: string
+        default: ""
 
 jobs:
   send-reminder:
@@ -40,6 +44,7 @@ jobs:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           LEAD_ALERT_EMAIL: ${{ secrets.LEAD_ALERT_EMAIL }}
           TEST_MODE: ${{ github.event.inputs.test_mode || 'false' }}
+          TARGET_DATE_OVERRIDE: ${{ github.event.inputs.target_date }}
           SKIP_WEEKENDS: "true"
           TIMEZONE: "Asia/Colombo"
           SCAN_TIME_LOCAL: "09:00"

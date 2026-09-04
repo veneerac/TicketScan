@@ -79,3 +79,9 @@ TEST_MODE = os.environ.get("TEST_MODE", "false").strip().lower() == "true"
 # Nobody's scheduled to scan on weekends (roster cells are blank Sat/Sun),
 # so treat that as a normal no-op rather than an error worth alerting on.
 SKIP_WEEKENDS = os.environ.get("SKIP_WEEKENDS", "true").strip().lower() == "true"
+
+# Testing aid: override which date is treated as "tomorrow" (format
+# YYYY-MM-DD), so you can verify the real assignment logic against any
+# weekday on demand instead of waiting for the calendar. Leave unset for
+# normal operation — real runs always use the actual tomorrow.
+TARGET_DATE_OVERRIDE = os.environ.get("TARGET_DATE_OVERRIDE") or None

@@ -12,6 +12,8 @@ import scan_logic
 
 
 def tomorrow_local() -> datetime.date:
+    if config.TARGET_DATE_OVERRIDE:
+        return datetime.datetime.strptime(config.TARGET_DATE_OVERRIDE, "%Y-%m-%d").date()
     now_local = datetime.datetime.now(ZoneInfo(config.TIMEZONE))
     return (now_local + datetime.timedelta(days=1)).date()
 
