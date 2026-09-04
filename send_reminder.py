@@ -1,4 +1,5 @@
 import datetime
+import html
 import sys
 import traceback
 
@@ -35,12 +36,17 @@ def build_email(assignment: scan_logic.Assignment, target_date: datetime.date) -
 
 def send_failure_alert(error_text: str) -> None:
     try:
+        # Escape before embedding in HTML — raw tracebacks often contain
+        # "<...>"-shaped text (e.g. "<HttpError 400 ...>") that would
+        # otherwise be swallowed as an invalid HTML tag by the email client,
+        # silently truncating the visible error right where it starts.
+        safe_error_text = html.escape(error_text)
         gmail_mail.send_mail(
             sender_address=config.GMAIL_SENDER_ADDRESS,
             app_password=config.GMAIL_APP_PASSWORD,
             to_addresses=[config.LEAD_ALERT_EMAIL],
             subject="[ACTION NEEDED] Scan reminder automation failed",
-            body_html=f"<p>The daily scan-reminder job failed:</p><pre>{error_text}</pre>"
+            body_html=f"<p>The daily scan-reminder job failed:</p><pre>{safe_error_text}</pre>"
             f"<p>No reminder may have been sent for tomorrow's scan — please check "
             f"and assign someone manually if needed.</p>",
         )
