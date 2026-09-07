@@ -1,0 +1,62 @@
+name: Weekly Issues Scan Sheet Update
+
+on:
+  # Paused during setup/testing, same as the daily reminder — only manual
+  # "Run workflow" triggers fire for now. Uncomment when ready to go live.
+  # schedule:
+  #   # 12:30 UTC Sunday = 18:00 Asia/Colombo Sunday — before the work week
+  #   # starts, so the whole upcoming week is visible in advance.
+  #   - cron: "30 12 * * 0"
+  workflow_dispatch:
+    inputs:
+      test_mode:
+        description: "Test mode: print what would be written, don't touch the sheet"
+        type: boolean
+        default: true
+      target_date:
+        description: "Treat this date (YYYY-MM-DD, any day) as the Monday to start the week from — leave blank for the real upcoming week"
+        type: string
+        default: ""
+
+jobs:
+  update-scan-sheet:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install -r requirements.txt
+
+      - run: python update_scan_sheet.py
+        env:
+          GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+          GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+          GOOGLE_OAUTH_REFRESH_TOKEN: ${{ secrets.GOOGLE_OAUTH_REFRESH_TOKEN }}
+          SCAN_SPREADSHEET_ID: ${{ secrets.SCAN_SPREADSHEET_ID }}
+          ROSTER_SPREADSHEET_ID: ${{ secrets.ROSTER_SPREADSHEET_ID }}
+          LEAVE_SPREADSHEET_ID: ${{ secrets.LEAVE_SPREADSHEET_ID }}
+          GMAIL_SENDER_ADDRESS: ${{ secrets.GMAIL_SENDER_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          LEAD_ALERT_EMAIL: ${{ secrets.LEAD_ALERT_EMAIL }}
+          ROSTER_TEAM_LABEL: ${{ secrets.ROSTER_TEAM_LABEL }}
+          LEAVE_TEAM_LABEL: ${{ secrets.LEAVE_TEAM_LABEL }}
+          TEST_MODE: ${{ github.event.inputs.test_mode || 'false' }}
+          TARGET_DATE_OVERRIDE: ${{ github.event.inputs.target_date }}
+          TIMEZONE: "Asia/Colombo"
+          # Tune these to match your real sheets — see README "Required Google Sheet structure".
+          ROSTER_TAB_OVERRIDE: "2026 - New"
+          ROSTER_DATE_COLUMN_INDEX: "1"
+          ROSTER_DATE_FORMAT: "%m/%d/%Y"
+          ROSTER_DUTY_CODES: "6-9am,6-9am-OC"
+          ROSTER_DUTY_EXCLUDE_CODES: "6-9pm"
+          ROSTER_AVAILABLE_CODES: "LK"
+          EMAIL_DOMAIN: "@wso2.com"
+          DATE_FORMAT: "%m/%d/%Y"
+          LEAVE_TAB_PREFIX: "Leave Plan "
+          LEAVE_DATE_FORMAT: "%d-%b"
+          SCAN_SHEET_DATE_COLUMN_INDEX: "1"
+          SCAN_SHEET_DUTY_MARKER: "Scan"

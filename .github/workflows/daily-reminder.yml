@@ -1,0 +1,64 @@
+name: Daily Scan Reminder
+
+on:
+  # Automatic daily schedule is paused during setup/testing — only manual
+  # "Run workflow" triggers fire for now. Uncomment the schedule block below
+  # (and remove this comment) when ready to go live.
+  # schedule:
+  #   # 03:30 UTC = 09:00 Asia/Colombo (UTC+5:30, no DST).
+  #   # If SCAN_TIME_LOCAL in repo variables/secrets changes, update this line to match
+  #   # (24h before the new scan time, converted to UTC).
+  #   - cron: "30 3 * * *"
+  workflow_dispatch:
+    inputs:
+      test_mode:
+        description: "Test mode: send preview only to LEAD_ALERT_EMAIL, skip the Log write"
+        type: boolean
+        default: true
+      target_date:
+        description: "Test a specific date (YYYY-MM-DD) instead of tomorrow — leave blank for normal behavior"
+        type: string
+        default: ""
+
+jobs:
+  send-reminder:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install -r requirements.txt
+
+      - run: python send_reminder.py
+        env:
+          GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+          GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+          GOOGLE_OAUTH_REFRESH_TOKEN: ${{ secrets.GOOGLE_OAUTH_REFRESH_TOKEN }}
+          SCAN_SPREADSHEET_ID: ${{ secrets.SCAN_SPREADSHEET_ID }}
+          ROSTER_SPREADSHEET_ID: ${{ secrets.ROSTER_SPREADSHEET_ID }}
+          LEAVE_SPREADSHEET_ID: ${{ secrets.LEAVE_SPREADSHEET_ID }}
+          GMAIL_SENDER_ADDRESS: ${{ secrets.GMAIL_SENDER_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          LEAD_ALERT_EMAIL: ${{ secrets.LEAD_ALERT_EMAIL }}
+          ROSTER_TEAM_LABEL: ${{ secrets.ROSTER_TEAM_LABEL }}
+          LEAVE_TEAM_LABEL: ${{ secrets.LEAVE_TEAM_LABEL }}
+          TEST_MODE: ${{ github.event.inputs.test_mode || 'false' }}
+          TARGET_DATE_OVERRIDE: ${{ github.event.inputs.target_date }}
+          SKIP_WEEKENDS: "true"
+          TIMEZONE: "Asia/Colombo"
+          SCAN_TIME_LOCAL: "09:00"
+          # Tune these to match your real sheets — see README "Required Google Sheet structure".
+          ROSTER_TAB_OVERRIDE: "2026 - New"
+          ROSTER_DATE_COLUMN_INDEX: "1"
+          ROSTER_DATE_FORMAT: "%m/%d/%Y"
+          ROSTER_DUTY_CODES: "6-9am,6-9am-OC"
+          ROSTER_DUTY_EXCLUDE_CODES: "6-9pm"
+          ROSTER_AVAILABLE_CODES: "LK"
+          EMAIL_DOMAIN: "@wso2.com"
+          DATE_FORMAT: "%m/%d/%Y"
+          LEAVE_TAB_PREFIX: "Leave Plan "
+          LEAVE_DATE_FORMAT: "%d-%b"
