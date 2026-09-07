@@ -55,7 +55,7 @@ def build_email(assignment: scan_logic.Assignment, target_date: datetime.date) -
         f"Add to Google Calendar</button></a>"
     )
     body = (
-        f"Hello,<br>"
+        f"Hello {assignment.name},<br>"
         f"Kind reminder, you have been allocated to do the {config.TEAM_DISPLAY_NAME} "
         f"ticket scan for tomorrow, {target_date.strftime('%A, %d %B %Y')}.{note}"
         f"<br>{calendar_button}"
