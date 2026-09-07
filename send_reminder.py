@@ -2,6 +2,7 @@ import datetime
 import html
 import sys
 import traceback
+import urllib.parse
 
 from zoneinfo import ZoneInfo
 
@@ -18,6 +19,27 @@ def tomorrow_local() -> datetime.date:
     return (now_local + datetime.timedelta(days=1)).date()
 
 
+def google_calendar_link(target_date: datetime.date) -> str:
+    """Same idea as the team's old CloudScan.py script: a "render" URL that
+    pre-fills a Google Calendar event, letting the recipient click through
+    and save it to their own calendar — nothing gets added automatically,
+    and nobody but the person who clicks it is affected."""
+    hour, minute = (int(p) for p in config.SCAN_TIME_LOCAL.split(":"))
+    start_local = datetime.datetime.combine(
+        target_date, datetime.time(hour, minute), tzinfo=ZoneInfo(config.TIMEZONE)
+    )
+    start_utc = start_local.astimezone(datetime.timezone.utc)
+    end_utc = start_utc + datetime.timedelta(minutes=config.CALENDAR_EVENT_MINUTES)
+    params = {
+        "action": "TEMPLATE",
+        "text": f"{config.TEAM_DISPLAY_NAME} Ticket Scan",
+        "details": f"Kind reminder, you have been allocated to do the "
+        f"{config.TEAM_DISPLAY_NAME} ticket scan.",
+        "dates": f"{start_utc.strftime('%Y%m%dT%H%M%SZ')}/{end_utc.strftime('%Y%m%dT%H%M%SZ')}",
+    }
+    return "https://www.google.com/calendar/render?" + urllib.parse.urlencode(params)
+
+
 def build_email(assignment: scan_logic.Assignment, target_date: datetime.date) -> tuple[str, str]:
     subject = f"Ticket Scan Reminder Tomorrow ({target_date.isoformat()})"
     note = (
@@ -25,10 +47,18 @@ def build_email(assignment: scan_logic.Assignment, target_date: datetime.date) -
         if assignment.is_replacement
         else ""
     )
+    calendar_button = (
+        f'<a href="{google_calendar_link(target_date)}" target="_blank">'
+        f'<button style="background-color: #2196F3; color: white; border: none; '
+        f'border-radius: 4px; padding: 10px 20px; text-align: center; text-decoration: none; '
+        f'display: inline-block; font-size: 16px; margin: 4px 2px; cursor: pointer;">'
+        f"Add to Google Calendar</button></a>"
+    )
     body = (
         f"Hello,<br>"
         f"Kind reminder, you have been allocated to do the {config.TEAM_DISPLAY_NAME} "
         f"ticket scan for tomorrow, {target_date.strftime('%A, %d %B %Y')}.{note}"
+        f"<br>{calendar_button}"
         f"<br><br><i>This is an auto-generated email.</i>"
     )
     return subject, body

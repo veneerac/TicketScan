@@ -66,9 +66,13 @@ Rotation sheet (clearing/setting `"Scan"` markers for the upcoming week).
      within the last `BACKUP_COOLDOWN_DAYS` days (so it doesn't always
      fall on the same person — this applies whether the pick was because
      of someone's leave *or* because nobody was explicitly on duty).
-4. Send the reminder, and log the decision to the **Log** tab (in your own
-   Issues Scan Rotation sheet — the only sheet this automation ever writes
-   to, and only this one tab).
+4. Send the reminder — includes an **"Add to Google Calendar" button**
+   (a pre-filled event, `CALENDAR_EVENT_MINUTES` long starting at
+   `SCAN_TIME_LOCAL`) that the recipient can click to save it to their own
+   calendar; nothing is added automatically or shared, only the person who
+   clicks it is affected — and log the decision to the **Log** tab (in
+   your own Issues Scan Rotation sheet — the only sheet this automation
+   ever writes to, and only this one tab).
 5. If a reminder for that date was already logged (e.g. triggered twice),
    it skips — no duplicate emails.
 6. If anything fails (bad data, everyone unavailable,

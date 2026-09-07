@@ -106,6 +106,9 @@ LEAD_ALERT_EMAIL = _require("LEAD_ALERT_EMAIL")
 TIMEZONE = os.environ.get("TIMEZONE", "Asia/Colombo")
 SCAN_TIME_LOCAL = os.environ.get("SCAN_TIME_LOCAL", "09:00")
 
+# Length of the "Add to Google Calendar" event block in the reminder email.
+CALENDAR_EVENT_MINUTES = int(os.environ.get("CALENDAR_EVENT_MINUTES", "60"))
+
 # Wording only — the team name shown in the reminder email itself.
 TEAM_DISPLAY_NAME = os.environ.get("TEAM_DISPLAY_NAME", "Castor Team")
 
