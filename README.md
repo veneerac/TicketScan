@@ -118,6 +118,22 @@ Leave sheet) is dropped before picking a primary or a backup. So removing
 someone from your own sheet's header row is enough to stop them ever being
 selected, even if the company Roster sheet still lists them.
 
+**Note:** hiding a column (vs. deleting it) doesn't work for this — hidden
+columns are only a display setting, the Sheets API still returns their
+data, so a hidden person would still be eligible. Delete the column, or at
+minimum clear their header cell, to actually exclude them.
+
+## Manually excluding someone for a specific date
+
+Sometimes you know something the Roster/Leave sheets don't — type
+`SCAN_SHEET_EXCLUDE_TAG` (default `"Skip"`) into that person's cell for a
+specific date in your Issues Scan Rotation sheet, and they're excluded
+from being picked for that date, whether as the scheduled person or as a
+backup — same effect as being on leave, but controlled entirely by you in
+your own sheet. The weekly job never overwrites a cell that already
+contains this tag, so once typed in, it survives future weekly runs
+instead of getting cleared.
+
 ## Required Google Sheet structure
 
 **Roster sheet** — one tab per year (`2026`, ...). Column A = weekday,

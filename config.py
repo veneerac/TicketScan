@@ -25,6 +25,12 @@ LOG_TAB = os.environ.get("LOG_TAB", "Log")
 SCAN_SHEET_TAB_OVERRIDE = os.environ.get("SCAN_SHEET_TAB_OVERRIDE") or None  # default: str(year)
 SCAN_SHEET_DATE_COLUMN_INDEX = int(os.environ.get("SCAN_SHEET_DATE_COLUMN_INDEX", "1"))  # 0-based; 1 = column B
 SCAN_SHEET_DUTY_MARKER = os.environ.get("SCAN_SHEET_DUTY_MARKER", "Scan")
+# Manual override: typing this into a person's cell for a date excludes
+# them from scan duty that day — takes priority over the Roster/Leave
+# sheets, same effect as being on leave. The weekly job preserves any
+# cell containing this tag rather than clearing it, so it survives future
+# sheet updates once you type it in.
+SCAN_SHEET_EXCLUDE_TAG = os.environ.get("SCAN_SHEET_EXCLUDE_TAG", "Skip")
 
 # Company-wide Roster sheet — read-only for you, but readable via your own
 # OAuth login (no sharing needed for reading something you can already

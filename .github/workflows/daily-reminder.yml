@@ -62,3 +62,5 @@ jobs:
           DATE_FORMAT: "%m/%d/%Y"
           LEAVE_TAB_PREFIX: "Leave Plan "
           LEAVE_DATE_FORMAT: "%d-%b"
+          SCAN_SHEET_DATE_COLUMN_INDEX: "1"
+          SCAN_SHEET_EXCLUDE_TAG: "Skip"

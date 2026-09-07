@@ -213,6 +213,37 @@ def is_on_leave(
     return any(_names_match(name, n) for n in leave_schedule.get(target_date, []))
 
 
+# --- Manual exclusion tag (typed directly into the Issues Scan sheet) ---
+
+
+def is_excluded_via_scan_sheet(
+    name: str,
+    target_date: datetime.date,
+    scan_schedule: dict[datetime.date, dict[str, str]],
+    exclude_tag: str,
+) -> bool:
+    """True if `name`'s cell in the Issues Scan sheet for target_date
+    contains exclude_tag — a manual override that takes priority over the
+    Roster/Leave sheets, same effect as being on leave."""
+    exclude_tag_lower = exclude_tag.strip().lower()
+    for scan_person, cell in scan_schedule.get(target_date, {}).items():
+        if _names_match(name, scan_person) and exclude_tag_lower in cell.strip().lower():
+            return True
+    return False
+
+
+def is_unavailable(
+    name: str,
+    target_date: datetime.date,
+    leave_schedule: dict[datetime.date, list[str]],
+    scan_schedule: dict[datetime.date, dict[str, str]],
+    exclude_tag: str,
+) -> bool:
+    return is_on_leave(name, target_date, leave_schedule) or is_excluded_via_scan_sheet(
+        name, target_date, scan_schedule, exclude_tag
+    )
+
+
 # --- Assignment resolution ----------------------------------------------
 
 
@@ -252,20 +283,22 @@ def pick_available(
     roster_schedule: dict[datetime.date, dict[str, str]],
     available_codes: list[str],
     leave_schedule: dict[datetime.date, list[str]],
+    scan_schedule: dict[datetime.date, dict[str, str]],
+    exclude_tag: str,
     log_rows: list[dict],
     cooldown_days: int,
     date_format: str | None = None,
     exclude_name: str | None = None,
 ) -> str:
-    # A candidate is eligible only if they're not on leave AND their own
-    # Roster status that day is blank/"LK" — any other code (their own
-    # allocation, leave, evening shift, etc.) rules them out too.
+    # A candidate is eligible only if they're not on leave/excluded AND
+    # their own Roster status that day is blank/"LK" — any other code
+    # (their own allocation, leave, evening shift, etc.) rules them out too.
     team_names = list(roster_schedule.get(target_date, {}).keys())
     candidates = [
         name
         for name in team_names
         if (exclude_name is None or name.strip().lower() != exclude_name.strip().lower())
-        and not is_on_leave(name, target_date, leave_schedule)
+        and not is_unavailable(name, target_date, leave_schedule, scan_schedule, exclude_tag)
         and is_available_in_roster(name, target_date, roster_schedule, available_codes)
     ]
     if not candidates:
@@ -287,6 +320,8 @@ def resolve_assignment(
     duty_exclude_codes: list[str],
     available_codes: list[str],
     leave_schedule: dict[datetime.date, list[str]],
+    scan_schedule: dict[datetime.date, dict[str, str]],
+    exclude_tag: str,
     log_rows: list[dict],
     cooldown_days: int,
     email_domain: str,
@@ -299,7 +334,7 @@ def resolve_assignment(
         # error, just pick anyone available from the team.
         assignee = pick_available(
             target_date, roster_schedule, available_codes, leave_schedule,
-            log_rows, cooldown_days, date_format,
+            scan_schedule, exclude_tag, log_rows, cooldown_days, date_format,
         )
         return Assignment(
             name=assignee,
@@ -311,8 +346,9 @@ def resolve_assignment(
         )
 
     # The roster is filled in ahead of time, so it can go stale — cross-check
-    # against the live Leave sheet even for the scheduled person.
-    if not is_on_leave(primary_name, target_date, leave_schedule):
+    # against the live Leave sheet, and against any manual exclusion tag,
+    # even for the scheduled person.
+    if not is_unavailable(primary_name, target_date, leave_schedule, scan_schedule, exclude_tag):
         return Assignment(
             name=primary_name,
             email=resolve_email(primary_name, email_domain),
@@ -322,16 +358,19 @@ def resolve_assignment(
             primary_name=primary_name,
         )
 
+    conflict_reason = (
+        "on leave" if is_on_leave(primary_name, target_date, leave_schedule) else "manually excluded"
+    )
     replacement_name = pick_available(
         target_date, roster_schedule, available_codes, leave_schedule,
-        log_rows, cooldown_days, date_format, exclude_name=primary_name,
+        scan_schedule, exclude_tag, log_rows, cooldown_days, date_format, exclude_name=primary_name,
     )
     return Assignment(
         name=replacement_name,
         email=resolve_email(replacement_name, email_domain),
         is_replacement=True,
         from_pool=True,
-        reason=f"{primary_name} is on leave",
+        reason=f"{primary_name} is {conflict_reason}",
         primary_name=primary_name,
     )
 

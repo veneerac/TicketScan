@@ -80,7 +80,8 @@ def main() -> int:
                 assignment = scan_logic.resolve_assignment(
                     target_date, roster_schedules[year], config.ROSTER_DUTY_CODES,
                     config.ROSTER_DUTY_EXCLUDE_CODES, config.ROSTER_AVAILABLE_CODES,
-                    leave_schedules[year], log_rows + pretend_log_rows, config.BACKUP_COOLDOWN_DAYS,
+                    leave_schedules[year], scan_schedules[year], config.SCAN_SHEET_EXCLUDE_TAG,
+                    log_rows + pretend_log_rows, config.BACKUP_COOLDOWN_DAYS,
                     config.EMAIL_DOMAIN, config.DATE_FORMAT,
                 )
             except (ValueError, scan_logic.NoOneAvailableError) as exc:
@@ -114,7 +115,13 @@ def main() -> int:
 
             scan_tab = config.SCAN_SHEET_TAB_OVERRIDE or str(year)
             tab_writes = writes_by_tab.setdefault(scan_tab, {})
+            current_row = scan_schedules[year].get(target_date, {})
+            exclude_tag_lower = config.SCAN_SHEET_EXCLUDE_TAG.strip().lower()
             for person, cell_ref in row_people:
+                # Never overwrite a cell someone manually tagged for
+                # exclusion — it needs to survive future weekly runs.
+                if exclude_tag_lower in current_row.get(person, "").strip().lower():
+                    continue
                 tab_writes[cell_ref] = (
                     config.SCAN_SHEET_DUTY_MARKER
                     if person.strip().lower() == assignment.name.strip().lower()

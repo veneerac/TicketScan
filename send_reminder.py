@@ -91,6 +91,9 @@ def main() -> int:
             leave_grid, config.LEAVE_TEAM_LABEL, target_date.year,
             config.LEAVE_DATE_COLUMN_INDEX, config.LEAVE_DATE_FORMAT,
         )
+        scan_schedule = scan_logic.parse_scan_sheet_grid(
+            scan_grid, config.SCAN_SHEET_DATE_COLUMN_INDEX, config.DATE_FORMAT
+        )
 
         if config.TEST_MODE:
             print("=== TEST_MODE is ON: no real email, no Log write ===")
@@ -100,8 +103,8 @@ def main() -> int:
 
         assignment = scan_logic.resolve_assignment(
             target_date, roster_schedule, config.ROSTER_DUTY_CODES, config.ROSTER_DUTY_EXCLUDE_CODES,
-            config.ROSTER_AVAILABLE_CODES, leave_schedule, log_rows, config.BACKUP_COOLDOWN_DAYS,
-            config.EMAIL_DOMAIN, config.DATE_FORMAT,
+            config.ROSTER_AVAILABLE_CODES, leave_schedule, scan_schedule, config.SCAN_SHEET_EXCLUDE_TAG,
+            log_rows, config.BACKUP_COOLDOWN_DAYS, config.EMAIL_DOMAIN, config.DATE_FORMAT,
         )
 
         subject, body = build_email(assignment, target_date)
