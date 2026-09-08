@@ -8,8 +8,41 @@ from zoneinfo import ZoneInfo
 
 import config
 import google_sheets
+import gmail_api_mail
 import gmail_mail
 import scan_logic
+
+
+def send_mail(
+    to_addresses: list[str],
+    subject: str,
+    body_html: str,
+    cc_addresses: list[str] | None = None,
+) -> None:
+    """Dispatches to whichever provider MAIL_PROVIDER selects — "gmail_api"
+    sends via the Gmail API using OAuth (works even where SMTP app
+    passwords are blocked); "smtp" (the default) sends via SMTP + app
+    password."""
+    if config.MAIL_PROVIDER == "gmail_api":
+        gmail_api_mail.send_mail(
+            client_id=config.GOOGLE_OAUTH_CLIENT_ID,
+            client_secret=config.GOOGLE_OAUTH_CLIENT_SECRET,
+            refresh_token=config.GMAIL_API_REFRESH_TOKEN,
+            sender_address=config.GMAIL_SENDER_ADDRESS,
+            to_addresses=to_addresses,
+            subject=subject,
+            body_html=body_html,
+            cc_addresses=cc_addresses,
+        )
+    else:
+        gmail_mail.send_mail(
+            sender_address=config.GMAIL_SENDER_ADDRESS,
+            app_password=config.GMAIL_APP_PASSWORD,
+            to_addresses=to_addresses,
+            subject=subject,
+            body_html=body_html,
+            cc_addresses=cc_addresses,
+        )
 
 
 def tomorrow_local() -> datetime.date:
@@ -71,9 +104,7 @@ def send_failure_alert(error_text: str) -> None:
         # otherwise be swallowed as an invalid HTML tag by the email client,
         # silently truncating the visible error right where it starts.
         safe_error_text = html.escape(error_text)
-        gmail_mail.send_mail(
-            sender_address=config.GMAIL_SENDER_ADDRESS,
-            app_password=config.GMAIL_APP_PASSWORD,
+        send_mail(
             to_addresses=[config.LEAD_ALERT_EMAIL],
             subject="[ACTION NEEDED] Scan reminder automation failed",
             body_html=f"<p>The daily scan-reminder job failed:</p><pre>{safe_error_text}</pre>"
@@ -140,9 +171,7 @@ def main() -> int:
         subject, body = build_email(assignment, target_date)
 
         if config.TEST_MODE:
-            gmail_mail.send_mail(
-                sender_address=config.GMAIL_SENDER_ADDRESS,
-                app_password=config.GMAIL_APP_PASSWORD,
+            send_mail(
                 to_addresses=[config.LEAD_ALERT_EMAIL],
                 cc_addresses=None,
                 subject=f"[TEST MODE] {subject}",
@@ -155,9 +184,7 @@ def main() -> int:
             )
             return 0
 
-        gmail_mail.send_mail(
-            sender_address=config.GMAIL_SENDER_ADDRESS,
-            app_password=config.GMAIL_APP_PASSWORD,
+        send_mail(
             to_addresses=[assignment.email],
             cc_addresses=[config.LEAD_ALERT_EMAIL] if assignment.from_pool else None,
             subject=subject,

@@ -95,9 +95,21 @@ EMAIL_DOMAIN = os.environ.get("EMAIL_DOMAIN", "@wso2.com")
 # ambiguous auto-guess fallback in google_sheets.parse_date.
 DATE_FORMAT = os.environ.get("DATE_FORMAT") or None
 
-# Gmail (sending mail via SMTP + app password)
+# Mail sending — "smtp" (default: SMTP + app password) or "gmail_api"
+# (Gmail API via OAuth, reusing the same Google OAuth client already used
+# for Sheets access — an alternative for accounts where App Passwords are
+# blocked by Workspace policy but OAuth consent still works, without
+# needing Microsoft Entra at all).
+MAIL_PROVIDER = os.environ.get("MAIL_PROVIDER", "smtp").strip().lower()
+
 GMAIL_SENDER_ADDRESS = _require("GMAIL_SENDER_ADDRESS")
-GMAIL_APP_PASSWORD = _require("GMAIL_APP_PASSWORD")
+
+if MAIL_PROVIDER == "gmail_api":
+    GMAIL_API_REFRESH_TOKEN = _require("GMAIL_API_REFRESH_TOKEN")
+    GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD", "")
+else:
+    GMAIL_APP_PASSWORD = _require("GMAIL_APP_PASSWORD")
+    GMAIL_API_REFRESH_TOKEN = os.environ.get("GMAIL_API_REFRESH_TOKEN", "")
 
 # Who gets notified if the automation itself fails or nobody is available
 LEAD_ALERT_EMAIL = _require("LEAD_ALERT_EMAIL")

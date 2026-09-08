@@ -253,22 +253,40 @@ Rotation sheet, so no new sharing is needed at all.
    [myaccount.google.com/permissions](https://myaccount.google.com/permissions)
    and re-run `get_refresh_token.py` for a new one.
 
-### 2. Gmail access (send mail via SMTP + app password)
+### 2. Gmail access (two options)
 
-No admin needed — just the Gmail account you want reminders to be sent
-from (can be a personal Gmail, or a shared/team Gmail address you control):
+**Option A — SMTP + app password** (default, `MAIL_PROVIDER=smtp`). No
+admin needed — just the Gmail account you want reminders sent from (can
+be a personal Gmail, or a shared/team address you control):
 
 1. On that Gmail account, turn on **2-Step Verification**
    (myaccount.google.com/security) — app passwords only appear once this
    is on.
 2. Go to myaccount.google.com/apppasswords → create one (name it e.g.
    "scan-reminder") → copy the 16-character password shown.
-3. That's it — no Google Cloud project needed for this part (that's only
-   for the Sheets API access in step 1).
+3. That's it — no Google Cloud project needed for this part.
 
 **Note:** this is separate from the Google Sheets access in step 1 — that
 one only reads the spreadsheets and writes the Log tab; this one only
 sends mail. They can be different Google accounts if convenient.
+
+**Option B — Gmail API via OAuth** (`MAIL_PROVIDER=gmail_api`). Try this
+if App Passwords aren't available on the account you want to send from
+(e.g. blocked by Workspace policy) — it reuses the same OAuth Client
+ID/Secret from step 1, no new Google Cloud app or Microsoft Entra needed:
+
+1. In the same Google Cloud project from step 1: **APIs & Services →
+   Library** → search "Gmail API" → **Enable**.
+2. On your own machine: `pip install google-auth-oauthlib`, then
+   `python get_gmail_send_token.py`. It asks for the same Client ID/Secret
+   from step 1, opens a browser for you to log into whichever account
+   you want to send from, and approve sending mail on your behalf, then
+   prints a refresh token.
+3. There's no way to know in advance whether this will work for a given
+   account — some Workspace setups provision Sheets/Drive but not Gmail
+   itself for a given identity, in which case this fails for a different
+   reason than the App Password block did. If it doesn't work, fall back
+   to Option A.
 
 ### 3. GitHub repository secrets
 
@@ -285,12 +303,15 @@ repository secret** on [veneerac/TicketScan](https://github.com/veneerac/TicketS
 | `LEAVE_SPREADSHEET_ID` | ID from the Leave sheet's URL |
 | `LEAVE_TEAM_LABEL` | the exact merged-header text for your team in the Leave sheet (may differ from `ROSTER_TEAM_LABEL`) |
 | `SCAN_SPREADSHEET_ID` | ID from the Issues Scan Rotation sheet's URL (holds the Log tab) |
-| `GMAIL_SENDER_ADDRESS` | the Gmail address reminders are sent from, from step 2 |
-| `GMAIL_APP_PASSWORD` | the 16-character app password, from step 2 |
+| `GMAIL_SENDER_ADDRESS` | the address reminders are sent from, from step 2 |
+| `GMAIL_APP_PASSWORD` | the 16-character app password, from step 2 Option A (skip if using Option B) |
+| `GMAIL_API_REFRESH_TOKEN` | printed by `get_gmail_send_token.py`, from step 2 Option B (skip if using Option A) |
 | `LEAD_ALERT_EMAIL` | your email, for failure/leave-conflict alerts |
 
 These are shared by both workflows — nothing extra to add for the weekly
-job.
+job. To switch from Option A to Option B (or back), change `MAIL_PROVIDER`
+in both workflow files (`"smtp"` or `"gmail_api"`) — it isn't a secret,
+just a plain setting near the other env vars.
 
 ### 4. Adjust timing if needed
 
