@@ -10,6 +10,7 @@ import config
 import google_sheets
 import gmail_api_mail
 import gmail_mail
+import graph_mail
 import scan_logic
 
 
@@ -19,11 +20,21 @@ def send_mail(
     body_html: str,
     cc_addresses: list[str] | None = None,
 ) -> None:
-    """Dispatches to whichever provider MAIL_PROVIDER selects — "gmail_api"
-    sends via the Gmail API using OAuth (works even where SMTP app
-    passwords are blocked); "smtp" (the default) sends via SMTP + app
-    password."""
-    if config.MAIL_PROVIDER == "gmail_api":
+    """Dispatches to whichever provider MAIL_PROVIDER selects — "graph"
+    sends as the user's own wso2.com account via Microsoft Graph
+    (delegated Mail.Send); "gmail_api" sends via the Gmail API using
+    OAuth; "smtp" (the default) sends via SMTP + app password."""
+    if config.MAIL_PROVIDER == "graph":
+        graph_mail.send_mail(
+            client_id=config.MS_OAUTH_CLIENT_ID,
+            tenant_id=config.MS_OAUTH_TENANT_ID,
+            refresh_token=config.MS_OAUTH_REFRESH_TOKEN,
+            to_addresses=to_addresses,
+            subject=subject,
+            body_html=body_html,
+            cc_addresses=cc_addresses,
+        )
+    elif config.MAIL_PROVIDER == "gmail_api":
         gmail_api_mail.send_mail(
             client_id=config.GOOGLE_OAUTH_CLIENT_ID,
             client_secret=config.GOOGLE_OAUTH_CLIENT_SECRET,

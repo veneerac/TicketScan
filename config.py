@@ -95,21 +95,29 @@ EMAIL_DOMAIN = os.environ.get("EMAIL_DOMAIN", "@wso2.com")
 # ambiguous auto-guess fallback in google_sheets.parse_date.
 DATE_FORMAT = os.environ.get("DATE_FORMAT") or None
 
-# Mail sending — "smtp" (default: SMTP + app password) or "gmail_api"
+# Mail sending — "smtp" (default: Gmail SMTP + app password), "gmail_api"
 # (Gmail API via OAuth, reusing the same Google OAuth client already used
-# for Sheets access — an alternative for accounts where App Passwords are
-# blocked by Workspace policy but OAuth consent still works, without
-# needing Microsoft Entra at all).
+# for Sheets access), or "graph" (Microsoft Graph via OAuth, sends as your
+# own wso2.com account with delegated Mail.Send — no admin-consented
+# application permission needed).
 MAIL_PROVIDER = os.environ.get("MAIL_PROVIDER", "smtp").strip().lower()
 
 GMAIL_SENDER_ADDRESS = _require("GMAIL_SENDER_ADDRESS")
 
+GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD", "")
+GMAIL_API_REFRESH_TOKEN = os.environ.get("GMAIL_API_REFRESH_TOKEN", "")
+MS_OAUTH_CLIENT_ID = os.environ.get("MS_OAUTH_CLIENT_ID", "")
+MS_OAUTH_TENANT_ID = os.environ.get("MS_OAUTH_TENANT_ID", "")
+MS_OAUTH_REFRESH_TOKEN = os.environ.get("MS_OAUTH_REFRESH_TOKEN", "")
+
 if MAIL_PROVIDER == "gmail_api":
     GMAIL_API_REFRESH_TOKEN = _require("GMAIL_API_REFRESH_TOKEN")
-    GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD", "")
+elif MAIL_PROVIDER == "graph":
+    MS_OAUTH_CLIENT_ID = _require("MS_OAUTH_CLIENT_ID")
+    MS_OAUTH_TENANT_ID = _require("MS_OAUTH_TENANT_ID")
+    MS_OAUTH_REFRESH_TOKEN = _require("MS_OAUTH_REFRESH_TOKEN")
 else:
     GMAIL_APP_PASSWORD = _require("GMAIL_APP_PASSWORD")
-    GMAIL_API_REFRESH_TOKEN = os.environ.get("GMAIL_API_REFRESH_TOKEN", "")
 
 # Who gets notified if the automation itself fails or nobody is available
 LEAD_ALERT_EMAIL = _require("LEAD_ALERT_EMAIL")

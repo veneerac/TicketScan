@@ -42,7 +42,10 @@ jobs:
           GMAIL_SENDER_ADDRESS: ${{ secrets.GMAIL_SENDER_ADDRESS }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           GMAIL_API_REFRESH_TOKEN: ${{ secrets.GMAIL_API_REFRESH_TOKEN }}
-          # Set to "gmail_api" to send via Gmail API OAuth instead of SMTP + app password.
+          MS_OAUTH_CLIENT_ID: ${{ secrets.MS_OAUTH_CLIENT_ID }}
+          MS_OAUTH_TENANT_ID: ${{ secrets.MS_OAUTH_TENANT_ID }}
+          MS_OAUTH_REFRESH_TOKEN: ${{ secrets.MS_OAUTH_REFRESH_TOKEN }}
+          # "smtp" (SMTP+app password), "gmail_api" (Gmail API OAuth), or "graph" (Microsoft Graph OAuth).
           MAIL_PROVIDER: "gmail_api"
           LEAD_ALERT_EMAIL: ${{ secrets.LEAD_ALERT_EMAIL }}
           ROSTER_TEAM_LABEL: ${{ secrets.ROSTER_TEAM_LABEL }}
