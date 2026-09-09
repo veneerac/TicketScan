@@ -48,7 +48,7 @@ jobs:
           MS_OAUTH_TENANT_ID: ${{ secrets.MS_OAUTH_TENANT_ID }}
           MS_OAUTH_REFRESH_TOKEN: ${{ secrets.MS_OAUTH_REFRESH_TOKEN }}
           # "smtp" (SMTP+app password), "gmail_api" (Gmail API OAuth), or "graph" (Microsoft Graph OAuth).
-          MAIL_PROVIDER: "smtp"
+          MAIL_PROVIDER: "gmail_api"
           LEAD_ALERT_EMAIL: ${{ secrets.LEAD_ALERT_EMAIL }}
           ROSTER_TEAM_LABEL: ${{ secrets.ROSTER_TEAM_LABEL }}
           LEAVE_TEAM_LABEL: ${{ secrets.LEAVE_TEAM_LABEL }}
