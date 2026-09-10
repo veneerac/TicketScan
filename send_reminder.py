@@ -93,9 +93,9 @@ def build_email(assignment: scan_logic.Assignment, target_date: datetime.date) -
     )
     calendar_button = (
         f'<a href="{google_calendar_link(target_date)}" target="_blank">'
-        f'<button style="background-color: #2196F3; color: white; border: none; '
-        f'border-radius: 4px; padding: 10px 20px; text-align: center; text-decoration: none; '
-        f'display: inline-block; font-size: 16px; margin: 4px 2px; cursor: pointer;">'
+        f'<button style="background-color: #34A853; color: white; border: none; '
+        f'border-radius: 4px; padding: 6px 14px; text-align: center; text-decoration: none; '
+        f'display: inline-block; font-size: 13px; margin: 4px 2px; cursor: pointer;">'
         f"Add to Google Calendar</button></a>"
     )
     body = (
