@@ -239,8 +239,62 @@ def is_unavailable(
     scan_schedule: dict[datetime.date, dict[str, str]],
     exclude_tag: str,
 ) -> bool:
-    return is_on_leave(name, target_date, leave_schedule) or is_excluded_via_scan_sheet(
-        name, target_date, scan_schedule, exclude_tag
+    """On leave, or manually excluded via the Issues Scan sheet's tag.
+    Doesn't check Roster status — that's a separate, role-dependent check
+    (see has_roster_conflict / is_unavailable_as_primary below), since
+    "available" means something different for a backup candidate (blank/LK
+    only) than for someone already assigned primary duty (their own duty
+    code in the cell is expected and fine)."""
+    return (
+        is_on_leave(name, target_date, leave_schedule)
+        or is_excluded_via_scan_sheet(name, target_date, scan_schedule, exclude_tag)
+    )
+
+
+def has_roster_conflict(
+    name: str,
+    target_date: datetime.date,
+    roster_schedule: dict[datetime.date, dict[str, str]],
+    duty_codes: list[str],
+    available_codes: list[str],
+) -> bool:
+    """True if this person's own current Roster cell signals they can't do
+    the scan that day — anything other than blank, an available_code (e.g.
+    "LK"), or one of the duty_codes itself (still on duty per Roster, which
+    is expected and fine for whoever's already the assigned primary) counts
+    as a conflict: an evening-shift code, a leave code, being pulled onto a
+    migration, etc. Used to validate whoever's currently assigned (from
+    either the Issues Scan sheet or the Roster) against a Roster edit made
+    after that assignment was decided."""
+    cell = roster_schedule.get(target_date, {}).get(name, "")
+    cell_lower = cell.strip().lower()
+    if not cell_lower:
+        return False
+    if cell_lower in {c.strip().lower() for c in available_codes}:
+        return False
+    if any(code.strip().lower() in cell_lower for code in duty_codes):
+        return False
+    return True
+
+
+def is_unavailable_as_primary(
+    name: str,
+    target_date: datetime.date,
+    leave_schedule: dict[datetime.date, list[str]],
+    scan_schedule: dict[datetime.date, dict[str, str]],
+    exclude_tag: str,
+    roster_schedule: dict[datetime.date, dict[str, str]],
+    duty_codes: list[str],
+    available_codes: list[str],
+) -> bool:
+    """Full validity check for whoever's currently assigned primary duty,
+    regardless of which sheet named them: on leave, manually excluded via
+    the Issues Scan sheet's tag, or their own current Roster cell now
+    conflicts — this last one matters even when the Roster isn't the
+    primary source, since a mid-week Roster edit should still be caught."""
+    return (
+        is_unavailable(name, target_date, leave_schedule, scan_schedule, exclude_tag)
+        or has_roster_conflict(name, target_date, roster_schedule, duty_codes, available_codes)
     )
 
 
@@ -293,6 +347,8 @@ def pick_available(
     # A candidate is eligible only if they're not on leave/excluded AND
     # their own Roster status that day is blank/"LK" — any other code
     # (their own allocation, leave, evening shift, etc.) rules them out too.
+    # Unlike the primary-validity check, a backup candidate having their own
+    # duty code doesn't get a pass — this is deliberately the strict rule.
     team_names = list(roster_schedule.get(target_date, {}).keys())
     candidates = [
         name
@@ -348,7 +404,10 @@ def resolve_assignment(
     # The roster is filled in ahead of time, so it can go stale — cross-check
     # against the live Leave sheet, and against any manual exclusion tag,
     # even for the scheduled person.
-    if not is_unavailable(primary_name, target_date, leave_schedule, scan_schedule, exclude_tag):
+    if not is_unavailable_as_primary(
+        primary_name, target_date, leave_schedule, scan_schedule, exclude_tag,
+        roster_schedule, duty_codes, available_codes,
+    ):
         return Assignment(
             name=primary_name,
             email=resolve_email(primary_name, email_domain),
@@ -358,9 +417,111 @@ def resolve_assignment(
             primary_name=primary_name,
         )
 
-    conflict_reason = (
-        "on leave" if is_on_leave(primary_name, target_date, leave_schedule) else "manually excluded"
+    if is_on_leave(primary_name, target_date, leave_schedule):
+        conflict_reason = "on leave"
+    elif is_excluded_via_scan_sheet(primary_name, target_date, scan_schedule, exclude_tag):
+        conflict_reason = "manually excluded"
+    else:
+        conflict_reason = "unavailable per their current roster status"
+    replacement_name = pick_available(
+        target_date, roster_schedule, available_codes, leave_schedule,
+        scan_schedule, exclude_tag, log_rows, cooldown_days, date_format, exclude_name=primary_name,
     )
+    return Assignment(
+        name=replacement_name,
+        email=resolve_email(replacement_name, email_domain),
+        is_replacement=True,
+        from_pool=True,
+        reason=f"{primary_name} is {conflict_reason}",
+        primary_name=primary_name,
+    )
+
+
+def find_scan_sheet_primary(
+    target_date: datetime.date,
+    scan_schedule: dict[datetime.date, dict[str, str]],
+    duty_marker: str,
+) -> str | None:
+    """Returns whoever's cell in the Issues Scan sheet contains duty_marker
+    (e.g. "Scan") for target_date, or None if there's no row for that date
+    yet or nobody's marked — resolve_daily_assignment treats None as "fall
+    back to the Roster", so this doesn't need to distinguish those cases."""
+    day = scan_schedule.get(target_date)
+    if not day:
+        return None
+    marker_lower = duty_marker.strip().lower()
+    for person, cell in day.items():
+        if marker_lower in cell.strip().lower():
+            return person
+    return None
+
+
+def resolve_daily_assignment(
+    target_date: datetime.date,
+    scan_schedule: dict[datetime.date, dict[str, str]],
+    duty_marker: str,
+    roster_schedule: dict[datetime.date, dict[str, str]],
+    duty_codes: list[str],
+    duty_exclude_codes: list[str],
+    available_codes: list[str],
+    leave_schedule: dict[datetime.date, list[str]],
+    exclude_tag: str,
+    log_rows: list[dict],
+    cooldown_days: int,
+    email_domain: str,
+    date_format: str | None = None,
+) -> Assignment:
+    """The daily job's resolution order: the team's own Issues Scan sheet —
+    already updated by the weekly job, and the only place a manual
+    override lives — is checked FIRST for who's on duty. The company
+    Roster is consulted only as a fallback, when the Issues Scan sheet has
+    no entry at all for target_date. Either way, whoever comes out of that
+    is still validated against Leave, the Skip tag, and their own current
+    Roster status cell before being trusted — so a Roster edit made after
+    the weekly job ran is still caught, even though Roster isn't the
+    primary source here."""
+    primary_name = find_scan_sheet_primary(target_date, scan_schedule, duty_marker)
+    source = "issues scan sheet"
+
+    if primary_name is None:
+        primary_name = find_primary(target_date, roster_schedule, duty_codes, duty_exclude_codes)
+        source = "roster (fallback — no entry yet in the issues scan sheet)"
+
+    if primary_name is None:
+        # Nobody's explicitly marked anywhere — pick anyone available.
+        assignee = pick_available(
+            target_date, roster_schedule, available_codes, leave_schedule,
+            scan_schedule, exclude_tag, log_rows, cooldown_days, date_format,
+        )
+        return Assignment(
+            name=assignee,
+            email=resolve_email(assignee, email_domain),
+            is_replacement=False,
+            from_pool=True,
+            reason="no one explicitly on duty — assigned from available team members",
+            primary_name=assignee,
+        )
+
+    if not is_unavailable_as_primary(
+        primary_name, target_date, leave_schedule, scan_schedule, exclude_tag,
+        roster_schedule, duty_codes, available_codes,
+    ):
+        return Assignment(
+            name=primary_name,
+            email=resolve_email(primary_name, email_domain),
+            is_replacement=False,
+            from_pool=False,
+            reason=f"scheduled ({source})",
+            primary_name=primary_name,
+        )
+
+    if is_on_leave(primary_name, target_date, leave_schedule):
+        conflict_reason = "on leave"
+    elif is_excluded_via_scan_sheet(primary_name, target_date, scan_schedule, exclude_tag):
+        conflict_reason = "manually excluded"
+    else:
+        conflict_reason = "unavailable per their current roster status"
+
     replacement_name = pick_available(
         target_date, roster_schedule, available_codes, leave_schedule,
         scan_schedule, exclude_tag, log_rows, cooldown_days, date_format, exclude_name=primary_name,

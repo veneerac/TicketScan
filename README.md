@@ -44,38 +44,54 @@ Rotation sheet (clearing/setting `"Scan"` markers for the upcoming week).
    scheduled to scan on weekends, so this is a normal no-op (no email, no
    Log write, no failure alert), not an error. Controlled by
    `SKIP_WEEKENDS` (default `true`).
-1. Look up tomorrow's row in the **Roster** sheet's team columns (found by
-   matching the `ROSTER_TEAM_LABEL` secret) → whoever's cell **contains**
-   `6-9am` or `6-9am-OC` (not
-   necessarily an exact match) **and doesn't also contain `6-9pm`** is on
-   morning rotation and scheduled to do the scan. A compound cell like
-   `6-9pm/6-9am-oc` is excluded, not treated as duty — the evening shift
-   takes priority (see `ROSTER_DUTY_EXCLUDE_CODES` below).
-   - **If nobody's explicitly marked that day, that's not an error** —
-     it just means anyone available can do it, so the script picks from
-     the same available pool used for replacements (step 3).
-2. Cross-check the **Leave** sheet for that person — this catches leave
-   taken after the Roster was filled in.
-3. If there's a conflict (or nobody was explicitly marked in step 1), pick
-   from the same team's Roster columns, skipping anyone who is:
+1. **Check your own Issues Scan Rotation sheet first** — if tomorrow's row
+   already has someone marked with `SCAN_SHEET_DUTY_MARKER` (default
+   `"Scan"`), whether written by the weekly job or typed in by hand, that's
+   who's primary. This is what makes a manual override in that sheet
+   actually stick.
+2. **Only if that sheet has no entry at all for tomorrow**, fall back to
+   the company **Roster** sheet's team columns (found by matching the
+   `ROSTER_TEAM_LABEL` secret) → whoever's cell **contains** `6-9am` or
+   `6-9am-OC` (not necessarily an exact match) **and doesn't also contain
+   `6-9pm`** is on morning rotation. A compound cell like `6-9pm/6-9am-oc`
+   is excluded, not treated as duty — the evening shift takes priority (see
+   `ROSTER_DUTY_EXCLUDE_CODES` below).
+   - **If neither sheet has anyone explicitly marked, that's not an
+     error** — it just means anyone available can do it, so the script
+     picks from the same available pool used for replacements (step 4).
+3. Whoever came out of step 1 or 2, **re-validate them daily against three
+   things** regardless of which sheet named them — a Roster edit made
+   *after* the weekly job already wrote the Issues Scan sheet is still
+   caught this way:
+   - the **Leave** sheet (leave taken after the Roster/Issues Scan sheet
+     was filled in),
+   - the `SCAN_SHEET_EXCLUDE_TAG` (default `"Skip"`) tag in the Issues Scan
+     sheet, and
+   - their own **current** Roster cell for that day — anything other than
+     blank, an `ROSTER_AVAILABLE_CODES` code (e.g. `LK`), or one of the
+     duty codes itself (still on duty per Roster, which is fine) counts as
+     a conflict.
+4. If there's a conflict (or nobody was explicitly marked in steps 1–2),
+   pick from the team's Roster columns, skipping anyone who is:
    - on leave (Leave sheet), **or**
    - marked with anything other than blank/`LK` in their own Roster cell
      that day (their own allocation, evening shift, leave, etc. — see
      `ROSTER_AVAILABLE_CODES` below), **or**
+   - manually excluded via the `Skip` tag, **or**
    - used as a pick (leave replacement, or picked via this same fallback)
      within the last `BACKUP_COOLDOWN_DAYS` days (so it doesn't always
      fall on the same person — this applies whether the pick was because
      of someone's leave *or* because nobody was explicitly on duty).
-4. Send the reminder — includes an **"Add to Google Calendar" button**
+5. Send the reminder — includes an **"Add to Google Calendar" button**
    (a pre-filled event, `CALENDAR_EVENT_MINUTES` long starting at
    `SCAN_TIME_LOCAL`) that the recipient can click to save it to their own
    calendar; nothing is added automatically or shared, only the person who
    clicks it is affected — and log the decision to the **Log** tab (in
    your own Issues Scan Rotation sheet — the only sheet this automation
    ever writes to, and only this one tab).
-5. If a reminder for that date was already logged (e.g. triggered twice),
+6. If a reminder for that date was already logged (e.g. triggered twice),
    it skips — no duplicate emails.
-6. If anything fails (bad data, everyone unavailable,
+7. If anything fails (bad data, everyone unavailable,
    API error), it emails `LEAD_ALERT_EMAIL` immediately instead of failing
    silently.
 
@@ -83,19 +99,22 @@ Rotation sheet (clearing/setting `"Scan"` markers for the upcoming week).
 ever changes automatically — the Log tab is the full record of every real
 outcome. The one sheet that *does* get written automatically is your own
 Issues Scan Rotation sheet's per-year grid tab, via the separate weekly
-job described next.
+job described next — and the daily job reads that same tab first, before
+ever falling back to the Roster.
 
 ## Weekly Issues Scan sheet update
 
 Runs once a week (before the work week starts) and, for the upcoming
 Monday–Friday:
 
-1. Resolves who's actually assigned each day — identical logic to the
-   daily job (Roster lookup, Leave cross-check, reassignment with the same
-   allowlist and cooldown rules), except the cooldown also accounts for
-   picks made *earlier in the same weekly run*, so the same person doesn't
-   end up covering two days in one week just because neither was logged
-   yet.
+1. Resolves who's actually assigned each day — always Roster-first (Roster
+   lookup, Leave cross-check, reassignment with the same allowlist and
+   cooldown rules the daily job uses for its own fallback picks), since
+   this job's whole purpose is to (re-)compute fresh from Roster+Leave
+   rather than trust whatever's already written. The cooldown also
+   accounts for picks made *earlier in the same weekly run*, so the same
+   person doesn't end up covering two days in one week just because
+   neither was logged yet.
 2. For each day, clears every person's cell in that date's row in your
    Issues Scan Rotation sheet's per-year grid tab, then writes
    `SCAN_SHEET_DUTY_MARKER` (default `"Scan"`) into the resolved person's
@@ -105,10 +124,14 @@ Monday–Friday:
    warning rather than failing the whole run — add the row (or extend the
    sheet further into the year) if that happens.
 
-This is independent of the daily reminder job — the weekly job only edits
-the sheet, it never sends email; the daily job only sends email, reading
-straight from the Roster/Leave sheets regardless of what the weekly job
-has or hasn't written. Either can run on its own without the other.
+The weekly job only edits the sheet, it never sends email — but the daily
+job reads that sheet as its first source of "who's assigned" (see step 1
+above), falling back to the Roster only when the weekly job (or a manual
+edit) hasn't filled in that date yet. So the two aren't fully independent
+by design: the weekly job's writes are what the daily job normally acts
+on. Either can still run on its own without the other — the daily job just
+falls back to computing fresh from Roster+Leave if the weekly job hasn't
+run yet for that date.
 
 ## Filtering out people who've left the team
 

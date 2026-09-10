@@ -173,9 +173,10 @@ def main() -> int:
             print(f"Reminder for {target_date.isoformat()} already sent — skipping.")
             return 0
 
-        assignment = scan_logic.resolve_assignment(
-            target_date, roster_schedule, config.ROSTER_DUTY_CODES, config.ROSTER_DUTY_EXCLUDE_CODES,
-            config.ROSTER_AVAILABLE_CODES, leave_schedule, scan_schedule, config.SCAN_SHEET_EXCLUDE_TAG,
+        assignment = scan_logic.resolve_daily_assignment(
+            target_date, scan_schedule, config.SCAN_SHEET_DUTY_MARKER,
+            roster_schedule, config.ROSTER_DUTY_CODES, config.ROSTER_DUTY_EXCLUDE_CODES,
+            config.ROSTER_AVAILABLE_CODES, leave_schedule, config.SCAN_SHEET_EXCLUDE_TAG,
             log_rows, config.BACKUP_COOLDOWN_DAYS, config.EMAIL_DOMAIN, config.DATE_FORMAT,
         )
 
