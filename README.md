@@ -342,9 +342,14 @@ Daily reminder default assumes the scan happens at **09:00 Asia/Colombo**,
 so it fires at 03:30 UTC (24h before) — update both the `cron` line and
 `SCAN_TIME_LOCAL` in `.github/workflows/daily-reminder.yml` if different.
 
-Weekly update default fires **Sunday 18:00 Asia/Colombo** (12:30 UTC) —
-adjust the `cron` line in `.github/workflows/weekly-scan-sheet-update.yml`
-if you want it earlier/later, as long as it's before Monday.
+Weekly update default fires **Friday 18:00 Asia/Colombo** (12:30 UTC) —
+deliberately Friday, not Sunday: the daily reminder runs every morning
+including Sunday (to send Monday's reminder 24h ahead), so the week's
+assignments need to already be in the Issues Scan sheet *before* that
+Sunday 09:00 run. A Sunday-evening weekly run would land only ~9 hours
+ahead of it — Friday gives 2+ days of buffer instead. Adjust the `cron`
+line in `.github/workflows/weekly-scan-sheet-update.yml` if you want it
+earlier/later, but keep it comfortably before Sunday morning.
 
 ### 5. Test it safely
 
@@ -367,7 +372,7 @@ blank:
 - Daily reminder: treats that date as "tomorrow" — useful since weekends
   are skipped, so testing on a Friday would otherwise be a no-op.
 - Weekly update: treats that date as the Monday to resolve the week from —
-  useful to preview a future week without waiting for Sunday.
+  useful to preview a future week without waiting for Friday.
 
 To test locally instead: `pip install -r requirements.txt`, export the
 same env vars the workflow uses (including `TEST_MODE=true`), then

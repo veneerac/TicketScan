@@ -2,9 +2,13 @@ name: Weekly Issues Scan Sheet Update
 
 on:
   schedule:
-    # 12:30 UTC Sunday = 18:00 Asia/Colombo Sunday — before the work week
-    # starts, so the whole upcoming week is visible in advance.
-    - cron: "30 12 * * 0"
+    # 12:30 UTC Friday = 18:00 Asia/Colombo Friday. Deliberately Friday, not
+    # Sunday: the daily reminder job runs every morning including Sunday
+    # (to send Monday's reminder 24h ahead), so the upcoming week's
+    # assignments must already be written into the Issues Scan sheet
+    # *before* that Sunday 09:00 run — Friday evening gives 2+ days of
+    # buffer, where a Sunday run would land only 9 hours ahead of it.
+    - cron: "30 12 * * 5"
   workflow_dispatch:
     inputs:
       test_mode:
