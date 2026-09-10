@@ -59,7 +59,7 @@ ROSTER_DUTY_CODES = [
 # also appears in it — e.g. "6-9pm/6-9am-OC" is excluded (evening shift
 # takes priority), not treated as morning duty.
 ROSTER_DUTY_EXCLUDE_CODES = [
-    c.strip() for c in os.environ.get("ROSTER_DUTY_EXCLUDE_CODES", "6-9pm").split(",") if c.strip()
+    c.strip() for c in os.environ.get("ROSTER_DUTY_EXCLUDE_CODES", "6-9pm,Allo-INT").split(",") if c.strip()
 ]
 ROSTER_AVAILABLE_CODES = [
     c.strip() for c in os.environ.get("ROSTER_AVAILABLE_CODES", "LK").split(",") if c.strip()

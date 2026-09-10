@@ -256,20 +256,26 @@ def has_roster_conflict(
     target_date: datetime.date,
     roster_schedule: dict[datetime.date, dict[str, str]],
     duty_codes: list[str],
+    duty_exclude_codes: list[str],
     available_codes: list[str],
 ) -> bool:
     """True if this person's own current Roster cell signals they can't do
-    the scan that day — anything other than blank, an available_code (e.g.
-    "LK"), or one of the duty_codes itself (still on duty per Roster, which
-    is expected and fine for whoever's already the assigned primary) counts
-    as a conflict: an evening-shift code, a leave code, being pulled onto a
-    migration, etc. Used to validate whoever's currently assigned (from
-    either the Issues Scan sheet or the Roster) against a Roster edit made
-    after that assignment was decided."""
+    the scan that day. An exclude code (e.g. "6-9pm", "Allo-INT") always
+    wins, even in a compound cell alongside a duty code — same precedence
+    find_primary uses, e.g. "6-9am/Allo-INT" is a conflict, not fine just
+    because "6-9am" also appears. Otherwise: blank, an available_code (e.g.
+    "LK"), or a bare duty_code (still on duty per Roster, which is expected
+    and fine for whoever's already the assigned primary) means no conflict;
+    anything else (a leave code, being pulled onto a migration, etc.) does.
+    Used to validate whoever's currently assigned (from either the Issues
+    Scan sheet or the Roster) against a Roster edit made after that
+    assignment was decided."""
     cell = roster_schedule.get(target_date, {}).get(name, "")
     cell_lower = cell.strip().lower()
     if not cell_lower:
         return False
+    if any(ex.strip().lower() in cell_lower for ex in duty_exclude_codes):
+        return True
     if cell_lower in {c.strip().lower() for c in available_codes}:
         return False
     if any(code.strip().lower() in cell_lower for code in duty_codes):
@@ -285,6 +291,7 @@ def is_unavailable_as_primary(
     exclude_tag: str,
     roster_schedule: dict[datetime.date, dict[str, str]],
     duty_codes: list[str],
+    duty_exclude_codes: list[str],
     available_codes: list[str],
 ) -> bool:
     """Full validity check for whoever's currently assigned primary duty,
@@ -294,7 +301,9 @@ def is_unavailable_as_primary(
     primary source, since a mid-week Roster edit should still be caught."""
     return (
         is_unavailable(name, target_date, leave_schedule, scan_schedule, exclude_tag)
-        or has_roster_conflict(name, target_date, roster_schedule, duty_codes, available_codes)
+        or has_roster_conflict(
+            name, target_date, roster_schedule, duty_codes, duty_exclude_codes, available_codes,
+        )
     )
 
 
@@ -406,7 +415,7 @@ def resolve_assignment(
     # even for the scheduled person.
     if not is_unavailable_as_primary(
         primary_name, target_date, leave_schedule, scan_schedule, exclude_tag,
-        roster_schedule, duty_codes, available_codes,
+        roster_schedule, duty_codes, duty_exclude_codes, available_codes,
     ):
         return Assignment(
             name=primary_name,
@@ -504,7 +513,7 @@ def resolve_daily_assignment(
 
     if not is_unavailable_as_primary(
         primary_name, target_date, leave_schedule, scan_schedule, exclude_tag,
-        roster_schedule, duty_codes, available_codes,
+        roster_schedule, duty_codes, duty_exclude_codes, available_codes,
     ):
         return Assignment(
             name=primary_name,

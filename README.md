@@ -53,8 +53,9 @@ Rotation sheet (clearing/setting `"Scan"` markers for the upcoming week).
    the company **Roster** sheet's team columns (found by matching the
    `ROSTER_TEAM_LABEL` secret) → whoever's cell **contains** `6-9am` or
    `6-9am-OC` (not necessarily an exact match) **and doesn't also contain
-   `6-9pm`** is on morning rotation. A compound cell like `6-9pm/6-9am-oc`
-   is excluded, not treated as duty — the evening shift takes priority (see
+   `6-9pm` or `Allo-INT`** is on morning rotation. A compound cell like
+   `6-9pm/6-9am-oc` or `6-9am/Allo-INT` is excluded, not treated as duty —
+   the exclude code always wins over the duty code (see
    `ROSTER_DUTY_EXCLUDE_CODES` below).
    - **If neither sheet has anyone explicitly marked, that's not an
      error** — it just means anyone available can do it, so the script
@@ -179,12 +180,15 @@ code for that date:
 - `ROSTER_DUTY_CODES` (default `6-9am,6-9am-OC`) — if a cell **contains**
   any of these (not necessarily an exact match), that person is on
   morning rotation and should do the scan — *unless* the cell also
-  contains one of `ROSTER_DUTY_EXCLUDE_CODES` (default `6-9pm`), in which
-  case it's excluded instead. So `6-9am-OC` alone counts as duty, but
-  `6-9pm/6-9am-oc` doesn't — the evening shift marker overrides. If nobody
-  in the team has a matching cell that day, that's not an error — the
-  script falls back to picking anyone available (same rules as
-  `ROSTER_AVAILABLE_CODES` below).
+  contains one of `ROSTER_DUTY_EXCLUDE_CODES` (default `6-9pm,Allo-INT`),
+  in which case it's excluded instead. So `6-9am-OC` alone counts as duty,
+  but `6-9pm/6-9am-oc` or `6-9am/Allo-INT` doesn't — the exclude marker
+  always overrides. This same exclude-wins precedence also applies to the
+  daily re-validation in step 3 above — if a Roster edit adds an exclude
+  code to someone already assigned, they get reassigned even if their cell
+  still also shows a duty code. If nobody in the team has a matching cell
+  that day, that's not an error — the script falls back to picking anyone
+  available (same rules as `ROSTER_AVAILABLE_CODES` below).
 - `ROSTER_AVAILABLE_CODES` (default `LK`) — for anyone being considered as
   a **backup**, only these codes (or a blank cell) count as available.
   **Everything else excludes them** — `LL`, `AL`, `Allo-EXT`, `Allo-INT`,

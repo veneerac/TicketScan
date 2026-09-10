@@ -60,7 +60,7 @@ jobs:
           ROSTER_DATE_COLUMN_INDEX: "1"
           ROSTER_DATE_FORMAT: "%m/%d/%Y"
           ROSTER_DUTY_CODES: "6-9am,6-9am-OC"
-          ROSTER_DUTY_EXCLUDE_CODES: "6-9pm"
+          ROSTER_DUTY_EXCLUDE_CODES: "6-9pm,Allo-INT"
           ROSTER_AVAILABLE_CODES: "LK"
           EMAIL_DOMAIN: "@wso2.com"
           DATE_FORMAT: "%m/%d/%Y"
