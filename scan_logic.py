@@ -141,16 +141,26 @@ def filter_active_roster(
     active_names: list[str],
 ) -> dict[datetime.date, dict[str, str]]:
     """Drops any person from the roster schedule who doesn't match one of
-    active_names (same fuzzy prefix matching used for the Leave sheet,
-    since the two sheets don't always use identical name spellings)."""
-    return {
-        date: {
-            person: cell
-            for person, cell in day.items()
-            if any(names_match(person, active) for active in active_names)
-        }
-        for date, day in roster_schedule.items()
-    }
+    active_names, and renames the survivors to their matching active_names
+    spelling. The Issues Scan Rotation sheet's own header row (active_names)
+    is the canonical spelling from here on — including for the email
+    address every downstream resolve_email() call derives — since the
+    Roster sheet's naming can differ (e.g. Roster's "Kavindu" vs the team's
+    own, email-matching "KavinduN"). Without this rename, a name that only
+    ever passed through the Roster (the fallback-to-Roster path, or the
+    backup-candidate pool, both of which read names straight from this
+    schedule's keys) would resolve to the wrong, nonexistent address."""
+    result: dict[datetime.date, dict[str, str]] = {}
+    for date, day in roster_schedule.items():
+        renamed: dict[str, str] = {}
+        for person, cell in day.items():
+            canonical = next(
+                (active for active in active_names if names_match(person, active)), None
+            )
+            if canonical is not None:
+                renamed[canonical] = cell
+        result[date] = renamed
+    return result
 
 
 # --- Leave sheet (separate, more up-to-date than the weekly roster) -----
