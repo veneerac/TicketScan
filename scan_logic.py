@@ -147,7 +147,7 @@ def filter_active_roster(
         date: {
             person: cell
             for person, cell in day.items()
-            if any(_names_match(person, active) for active in active_names)
+            if any(names_match(person, active) for active in active_names)
         }
         for date, day in roster_schedule.items()
     }
@@ -197,10 +197,14 @@ def parse_leave_grid(
     return schedule
 
 
-def _names_match(a: str, b: str) -> bool:
+def names_match(a: str, b: str) -> bool:
     """Case-insensitive match, allowing one name to be a short-form prefix
-    of the other — the Leave sheet often uses first names only (e.g.
-    "Amal"), while the Roster uses first-name+initial (e.g. "AmalP")."""
+    of the other — sheets don't always spell the same person's name the
+    same way (e.g. the Leave sheet's "Amal" vs the Roster's "AmalP", or the
+    Roster's "Kavindu" vs the Issues Scan sheet's own "KavinduN"). Used
+    anywhere a name from one sheet needs to be matched against another —
+    exact `==` comparison across sheets is a known source of silent
+    mismatches, so don't reintroduce one."""
     a, b = a.strip().lower(), b.strip().lower()
     return bool(a) and bool(b) and (a == b or a.startswith(b) or b.startswith(a))
 
@@ -210,7 +214,7 @@ def is_on_leave(
     target_date: datetime.date,
     leave_schedule: dict[datetime.date, list[str]],
 ) -> bool:
-    return any(_names_match(name, n) for n in leave_schedule.get(target_date, []))
+    return any(names_match(name, n) for n in leave_schedule.get(target_date, []))
 
 
 # --- Manual exclusion tag (typed directly into the Issues Scan sheet) ---
@@ -227,7 +231,7 @@ def is_excluded_via_scan_sheet(
     Roster/Leave sheets, same effect as being on leave."""
     exclude_tag_lower = exclude_tag.strip().lower()
     for scan_person, cell in scan_schedule.get(target_date, {}).items():
-        if _names_match(name, scan_person) and exclude_tag_lower in cell.strip().lower():
+        if names_match(name, scan_person) and exclude_tag_lower in cell.strip().lower():
             return True
     return False
 

@@ -124,7 +124,13 @@ def main() -> int:
                     continue
                 tab_writes[cell_ref] = (
                     config.SCAN_SHEET_DUTY_MARKER
-                    if person.strip().lower() == assignment.name.strip().lower()
+                    # Fuzzy match, not exact equality — assignment.name comes
+                    # from the Roster sheet's naming (e.g. "Kavindu"), while
+                    # `person` is the Issues Scan sheet's own header (e.g.
+                    # "KavinduN"). An exact match silently fails whenever the
+                    # two sheets spell a name slightly differently, leaving
+                    # that whole day's row blank instead of marking anyone.
+                    if scan_logic.names_match(person, assignment.name)
                     else ""
                 )
 
