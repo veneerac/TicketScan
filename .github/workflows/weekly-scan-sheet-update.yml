@@ -1,12 +1,10 @@
 name: Weekly Issues Scan Sheet Update
 
 on:
-  # Paused during setup/testing, same as the daily reminder — only manual
-  # "Run workflow" triggers fire for now. Uncomment when ready to go live.
-  # schedule:
-  #   # 12:30 UTC Sunday = 18:00 Asia/Colombo Sunday — before the work week
-  #   # starts, so the whole upcoming week is visible in advance.
-  #   - cron: "30 12 * * 0"
+  schedule:
+    # 12:30 UTC Sunday = 18:00 Asia/Colombo Sunday — before the work week
+    # starts, so the whole upcoming week is visible in advance.
+    - cron: "30 12 * * 0"
   workflow_dispatch:
     inputs:
       test_mode:
